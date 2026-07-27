@@ -31,32 +31,96 @@ HEADERS = {
 }
 
 
+
 # ======================================================
-# CÓDIGOS UNSPSC TECNOLOGÍA
+# CATEGORÍAS TECNOLÓGICAS SECOP
 # ======================================================
 
 CODIGOS_TECNOLOGIA = {
 
-    "81111800": "Servicios seguridad TI",
-    "81111801": "Ciberseguridad",
+    "432": "Tecnología informática",
 
-    "43222500": "Seguridad de red",
-    "43222600": "Equipos de red",
+    "4321": "Hardware",
 
-    "43230000": "Software",
-    "43231500": "Software gestión",
-    "43232200": "Software seguridad",
+    "4322": "Redes y comunicaciones",
 
-    "43211500": "Computadores",
-    "43201800": "Almacenamiento",
+    "4323": "Software",
 
-    "81112000": "Procesamiento datos",
-    "81112100": "Servicios internet",
+    "8111": "Servicios TI",
 
-    "46171600": "Seguridad y vigilancia",
-    "46171619": "Sistemas vigilancia"
+    "811118": "Seguridad informática",
+
+    "4617": "Seguridad electrónica",
+
+    "81112": "Procesamiento de datos",
 
 }
+
+
+
+# ======================================================
+# PALABRAS TECNOLÓGICAS
+# ======================================================
+
+PALABRAS_TECNOLOGIA = [
+
+    "ciberseguridad",
+
+    "seguridad informática",
+
+    "seguridad informatica",
+
+    "firewall",
+
+    "siem",
+
+    "soc",
+
+    "centro de operaciones",
+
+    "monitoreo",
+
+    "centro de control",
+
+    "cctv",
+
+    "videovigilancia",
+
+    "biometr",
+
+    "facial",
+
+    "reconocimiento",
+
+    "abis",
+
+    "verilook",
+
+    "neurotechnology",
+
+    "data center",
+
+    "centro de datos",
+
+    "servidores",
+
+    "almacenamiento",
+
+    "cloud",
+
+    "nube",
+
+    "aws",
+
+    "azure",
+
+    "inteligencia artificial",
+
+    "analítica",
+
+    "big data"
+
+]
 
 
 
@@ -74,25 +138,33 @@ def log(texto):
 
 
 # ======================================================
-# CONSULTAR SECOP
+# CONSULTA SECOP
 # ======================================================
 
 def consultar_api(url):
 
     try:
 
-        r = requests.get(
+        respuesta = requests.get(
+
             url,
+
             params={
                 "$limit": LIMITE_API
             },
+
             headers=HEADERS,
+
             timeout=90
+
         )
 
-        r.raise_for_status()
 
-        datos = r.json()
+        respuesta.raise_for_status()
+
+
+        datos = respuesta.json()
+
 
         log(
             f"Registros recibidos: {len(datos)}"
@@ -101,77 +173,104 @@ def consultar_api(url):
 
         if datos:
 
-            log("Campos detectados:")
+            log(
+                "Campos detectados:"
+            )
 
-            print(datos[0].keys())
+            print(
+                list(datos[0].keys())
+            )
 
 
         return datos
 
 
-    except Exception as e:
+    except Exception as error:
+
 
         log(
-            f"Error API: {e}"
+            f"Error API: {error}"
         )
+
 
         return []
 
 
 
 # ======================================================
-# EXTRAER TEXTO DEL REGISTRO
+# ANALIZAR CATEGORÍAS SECOP
 # ======================================================
 
-def texto_registro(registro):
-
-    texto = ""
-
-    for campo, valor in registro.items():
-
-        if valor:
-
-            texto += " " + str(valor)
-
-
-    return texto
-
-
-
-# ======================================================
-# BUSCAR UNSPSC
-# ======================================================
-
-def analizar_unspsc(registro):
-
-    texto = texto_registro(
-        registro
-    )
+def analizar_tecnologia(registro):
 
 
     encontrados = []
 
 
-    for codigo, nombre in CODIGOS_TECNOLOGIA.items():
+    codigo = (
+
+        str(
+            registro.get(
+                "codigo_principal_de_categoria",
+                ""
+            )
+        )
+
+        +
+
+        " "
+
+        +
+
+        str(
+            registro.get(
+                "categorias_adicionales",
+                ""
+            )
+        )
+
+    ).lower()
 
 
-        if codigo in texto:
 
+    for clave, nombre in CODIGOS_TECNOLOGIA.items():
+
+        if clave.lower() in codigo:
 
             encontrados.append(
-                f"{codigo} - {nombre}"
+                f"{clave} - {nombre}"
             )
 
 
-    return encontrados
+
+    texto = str(registro).lower()
+
+
+
+    for palabra in PALABRAS_TECNOLOGIA:
+
+
+        if palabra in texto:
+
+
+            encontrados.append(
+                palabra
+            )
+
+
+
+    return list(
+        set(encontrados)
+    )
 
 
 
 # ======================================================
-# FILTRAR TECNOLOGÍA
+# FILTRO
 # ======================================================
 
-def filtrar_tecnologia(registros):
+def filtrar(registros):
+
 
     resultado = []
 
@@ -179,16 +278,18 @@ def filtrar_tecnologia(registros):
     for registro in registros:
 
 
-        codigos = analizar_unspsc(
+        hallazgos = analizar_tecnologia(
             registro
         )
 
 
-        if codigos:
+        if hallazgos:
 
 
-            registro["categoria_tecnologia"] = (
-                ", ".join(codigos)
+            registro["hallazgos"] = (
+
+                ", ".join(hallazgos)
+
             )
 
 
@@ -197,18 +298,20 @@ def filtrar_tecnologia(registros):
             )
 
 
+
     return resultado
 
 
 
 # ======================================================
-# OBTENER DATOS
+# OBTENER PROCESOS
 # ======================================================
 
 def obtener_procesos():
 
+
     log(
-        "Consultando procesos SECOP..."
+        "Consultando procesos..."
     )
 
 
@@ -217,13 +320,13 @@ def obtener_procesos():
     )
 
 
-    encontrados = filtrar_tecnologia(
+    encontrados = filtrar(
         datos
     )
 
 
     log(
-        f"Procesos tecnología: {len(encontrados)}"
+        f"Procesos encontrados: {len(encontrados)}"
     )
 
 
@@ -231,10 +334,15 @@ def obtener_procesos():
 
 
 
+# ======================================================
+# OBTENER CONTRATOS
+# ======================================================
+
 def obtener_contratos():
 
+
     log(
-        "Consultando contratos SECOP..."
+        "Consultando contratos..."
     )
 
 
@@ -243,13 +351,13 @@ def obtener_contratos():
     )
 
 
-    encontrados = filtrar_tecnologia(
+    encontrados = filtrar(
         datos
     )
 
 
     log(
-        f"Contratos tecnología: {len(encontrados)}"
+        f"Contratos encontrados: {len(encontrados)}"
     )
 
 
@@ -265,9 +373,14 @@ def dinero(valor):
 
     try:
 
-        numero = float(valor)
+        return (
 
-        return f"${numero:,.0f}"
+            "${:,.0f}".format(
+                float(valor)
+            )
+
+        )
+
 
     except:
 
@@ -276,36 +389,56 @@ def dinero(valor):
 
 
 # ======================================================
-# GENERAR HTML
+# HTML
 # ======================================================
 
 def generar_html(procesos, contratos):
 
 
-    def fila(registro):
+    registros = (
+
+        contratos
+
+        +
+
+        procesos
+
+    )
+
+
+
+    filas = ""
+
+
+
+    for r in registros[:LIMITE_INFORME]:
 
 
         entidad = (
-            registro.get("nombre_entidad")
+
+            r.get("entidad")
+
             or
-            registro.get("entidad")
+
+            r.get("nombre_entidad")
+
             or
+
             "-"
+
         )
 
 
         descripcion = (
 
-            registro.get("objeto_del_contrato")
-
-            or
-
-            registro.get("descripcion_del_proceso")
-
-            or
-
-            registro.get(
+            r.get(
                 "descripci_n_del_procedimiento"
+            )
+
+            or
+
+            r.get(
+                "objeto_del_contrato"
             )
 
             or
@@ -317,11 +450,15 @@ def generar_html(procesos, contratos):
 
         valor = (
 
-            registro.get("valor_del_contrato")
+            r.get(
+                "precio_base"
+            )
 
             or
 
-            registro.get("precio_base")
+            r.get(
+                "valor_del_contrato"
+            )
 
             or
 
@@ -330,7 +467,7 @@ def generar_html(procesos, contratos):
         )
 
 
-        return f"""
+        filas += f"""
 
 <tr>
 
@@ -340,32 +477,27 @@ def generar_html(procesos, contratos):
 
 <td>{dinero(valor)}</td>
 
-<td>
-{registro.get('categoria_tecnologia','')}
-</td>
+<td>{r.get('codigo_principal_de_categoria','')}</td>
+
+<td>{r.get('hallazgos','')}</td>
 
 </tr>
 
 """
 
 
-    filas = ""
-
-
-    for r in (contratos + procesos)[:LIMITE_INFORME]:
-
-        filas += fila(r)
-
-
 
     if not filas:
+
 
         filas = """
 
 <tr>
 
-<td colspan="4">
-No se encontraron códigos tecnológicos
+<td colspan="5">
+
+No se encontraron oportunidades
+
 </td>
 
 </tr>
@@ -384,13 +516,28 @@ No se encontraron códigos tecnológicos
 
 <style>
 
-body{{font-family:Arial;background:#f2f5f9;padding:20px}}
+body {{
+font-family:Arial;
+background:#eef2f7;
+padding:20px;
+}}
 
-table{{width:100%;border-collapse:collapse;background:white}}
+table {{
+width:100%;
+border-collapse:collapse;
+background:white;
+}}
 
-th{{background:#003566;color:white;padding:10px}}
+th {{
+background:#003566;
+color:white;
+padding:10px;
+}}
 
-td{{padding:10px;border-bottom:1px solid #ddd}}
+td {{
+padding:8px;
+border-bottom:1px solid #ddd;
+}}
 
 </style>
 
@@ -421,7 +568,9 @@ Fecha:
 
 <th>Valor</th>
 
-<th>Código UNSPSC</th>
+<th>UNSPSC</th>
+
+<th>Detectado</th>
 
 </tr>
 
@@ -441,12 +590,13 @@ Fecha:
 
 
 # ======================================================
-# GUARDAR HTML
+# GUARDAR
 # ======================================================
 
 def guardar(html):
 
-    archivo = (
+
+    nombre = (
 
         "informe_secop_"
 
@@ -463,14 +613,17 @@ def guardar(html):
     )
 
 
-    Path(archivo).write_text(
+    Path(nombre).write_text(
+
         html,
+
         encoding="utf-8"
+
     )
 
 
     log(
-        f"Archivo creado: {archivo}"
+        f"Generado: {nombre}"
     )
 
 
@@ -486,13 +639,16 @@ def enviar_email(html):
         "GMAIL_REMITENTE"
     )
 
+
     password = os.getenv(
         "GMAIL_PASSWORD"
     )
 
+
     destinos = os.getenv(
         "DESTINATARIOS"
     )
+
 
 
     if not remitente or not password:
@@ -505,28 +661,26 @@ def enviar_email(html):
 
 
 
-    lista = [
-        x.strip()
-        for x in destinos.split(",")
-        if x.strip()
-    ]
-
-
-
     servidor = smtplib.SMTP_SSL(
+
         "smtp.gmail.com",
+
         465
+
     )
 
 
     servidor.login(
+
         remitente,
+
         password
+
     )
 
 
 
-    for destino in lista:
+    for destino in destinos.split(","):
 
 
         msg = MIMEMultipart(
@@ -535,29 +689,39 @@ def enviar_email(html):
 
 
         msg["Subject"] = (
-            "Monitor SECOP Tecnología"
+            "🛡️ Monitor SECOP Tecnología"
         )
 
 
         msg["From"] = remitente
 
-        msg["To"] = destino
+        msg["To"] = destino.strip()
 
 
 
         msg.attach(
+
             MIMEText(
+
                 html,
+
                 "html",
+
                 "utf-8"
+
             )
+
         )
 
 
         servidor.sendmail(
+
             remitente,
-            destino,
+
+            destino.strip(),
+
             msg.as_string()
+
         )
 
 
@@ -585,20 +749,28 @@ def main():
 
     procesos = obtener_procesos()
 
+
     contratos = obtener_contratos()
 
 
 
     html = generar_html(
+
         procesos,
+
         contratos
+
     )
+
 
 
     guardar(html)
 
 
-    enviar_email(html)
+
+    enviar_email(
+        html
+    )
 
 
 
