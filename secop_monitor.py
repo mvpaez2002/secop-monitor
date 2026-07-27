@@ -10,31 +10,30 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-# ==========================================================
-# CONFIGURACIÓN
-# ==========================================================
+# =====================================================
+# CONFIGURACION
+# =====================================================
 
-API_SECOP = "https://www.datos.gov.co/resource/p6dx-8zbt.json"
+API = "https://www.datos.gov.co/resource/p6dx-8zbt.json"
 
-DIAS_BUSQUEDA = 120
+DIAS = 180
 
-MAX_RESULTADOS_API = 500
+LIMITE_API = 50000
 
-MAX_INFORME = 100
+LIMITE_INFORME = 100
 
 
 
-# ==========================================================
-# PALABRAS DE INTERÉS
-# ==========================================================
+# =====================================================
+# PALABRAS OBJETIVO
+# =====================================================
 
-PALABRAS_CLAVE = [
+KEYWORDS = [
 
     "ciberseguridad",
     "seguridad informática",
     "seguridad informatica",
     "seguridad de la información",
-    "seguridad de la informacion",
 
     "firewall",
     "fortinet",
@@ -49,11 +48,11 @@ PALABRAS_CLAVE = [
     "centro de operaciones",
 
     "cctv",
+    "video vigilancia",
     "videovigilancia",
 
     "biometria",
     "biometría",
-    "huella",
     "facial",
     "reconocimiento",
 
@@ -70,14 +69,13 @@ PALABRAS_CLAVE = [
 
     "cloud",
     "nube",
-    "aws",
     "azure",
+    "aws",
 
     "virtualizacion",
     "virtualización",
 
     "backup",
-    "respaldo",
 
     "redes",
     "switch",
@@ -85,190 +83,136 @@ PALABRAS_CLAVE = [
 
     "software",
 
-    "certificado digital",
     "firma digital",
-
-    "inteligencia artificial",
-    "analitica",
-    "analítica"
+    "certificado digital"
 
 ]
 
 
-# ==========================================================
-# UNSPSC TECNOLOGÍA
-# ==========================================================
 
-CODIGOS_UNSPSC = {
+# =====================================================
+# CODIGOS UNSPSC
+# =====================================================
+
+UNSPSC = {
 
     "4323": "Software",
 
-    "432332": "Software de seguridad",
+    "432332": "Software seguridad",
 
-    "4322": "Redes y comunicaciones",
+    "4322": "Redes",
 
     "4321": "Hardware",
 
-    "4320": "Tecnología informática",
+    "4320": "Tecnología",
 
     "8111": "Servicios TI",
 
     "4617": "Seguridad electrónica",
 
-    "4618": "Control de acceso"
+    "4618": "Control acceso"
 
 }
 
 
 
-# ==========================================================
+# =====================================================
 # LOG
-# ==========================================================
+# =====================================================
 
-def log(texto):
+def log(msg):
 
     print(
-        f"[{datetime.now().strftime('%H:%M:%S')}] {texto}",
+        f"[{datetime.now().strftime('%H:%M:%S')}] {msg}",
         flush=True
     )
 
 
 
-# ==========================================================
-# CONSULTA API SECOP
-# ==========================================================
+# =====================================================
+# DESCARGAR SECOP
+# =====================================================
 
-def consultar_secop():
+def descargar_secop():
+
 
     fecha = (
 
         datetime.now()
         -
-        timedelta(days=DIAS_BUSQUEDA)
+        timedelta(days=DIAS)
 
     ).strftime(
+
         "%Y-%m-%dT00:00:00.000"
+
     )
 
 
-    consultas = [
+    try:
 
-        "seguridad",
-        "software",
-        "digital",
-        "tecnologia",
-        "sistema",
-        "redes",
-        "datos",
-        "biometria",
-        "cloud",
-        "servidores"
-
-    ]
-
-
-    todos = []
-
-
-    for palabra in consultas:
 
         log(
-            f"Consultando {palabra}"
+            "Consultando SECOP..."
         )
 
 
-        try:
+        r = requests.get(
 
-            respuesta = requests.get(
+            API,
 
-                API_SECOP,
+            params={
 
-                params={
+                "$limit": LIMITE_API,
 
-                    "$limit": MAX_RESULTADOS_API,
+                "$order":
+                "fecha_de_publicacion_del DESC"
 
-                    "$q": palabra,
+            },
 
-                    "$where":
-                    f"fecha_de_publicacion_del >= '{fecha}'"
-
-                },
-
-                timeout=60
-
-            )
-
-
-            respuesta.raise_for_status()
-
-
-            datos = respuesta.json()
-
-
-            log(
-                f"{palabra}: {len(datos)} registros"
-            )
-
-
-            todos.extend(datos)
-
-
-        except Exception as error:
-
-            log(
-                f"Error {palabra}: {error}"
-            )
-
-
-    return eliminar_duplicados(todos)
-
-
-
-# ==========================================================
-# ELIMINAR REPETIDOS
-# ==========================================================
-
-def eliminar_duplicados(datos):
-
-    vistos = set()
-
-    resultado = []
-
-
-    for item in datos:
-
-        identificador = (
-
-            item.get(
-                "id_del_proceso",
-                ""
-            )
+            timeout=120
 
         )
 
 
-        if identificador not in vistos:
-
-            vistos.add(
-                identificador
-            )
-
-            resultado.append(
-                item
-            )
+        r.raise_for_status()
 
 
-    return resultado
+        datos = r.json()
+
+
+        log(
+
+            f"SECOP devolvió {len(datos)} registros"
+
+        )
+
+
+        return datos
 
 
 
-# ==========================================================
-# CALCULAR RELEVANCIA
-# ==========================================================
+    except Exception as e:
 
-def analizar_registro(registro):
+
+        log(
+            f"ERROR API {e}"
+        )
+
+
+        return []
+
+
+
+# =====================================================
+# ANALISIS INTELIGENTE
+# =====================================================
+
+def analizar(registro):
+
 
     texto = " ".join([
+
 
         str(
             registro.get(
@@ -277,12 +221,14 @@ def analizar_registro(registro):
             )
         ),
 
+
         str(
             registro.get(
                 "descripci_n_del_procedimiento",
                 ""
             )
         ),
+
 
         str(
             registro.get(
@@ -291,6 +237,7 @@ def analizar_registro(registro):
             )
         ),
 
+
         str(
             registro.get(
                 "categorias_adicionales",
@@ -298,12 +245,15 @@ def analizar_registro(registro):
             )
         ),
 
+
         str(
             registro.get(
                 "nombre_del_proveedor",
                 ""
             )
         )
+
+
 
     ]).lower()
 
@@ -315,7 +265,7 @@ def analizar_registro(registro):
 
 
 
-    for palabra in PALABRAS_CLAVE:
+    for palabra in KEYWORDS:
 
 
         if palabra.lower() in texto:
@@ -341,16 +291,16 @@ def analizar_registro(registro):
 
 
 
-    for clave, descripcion in CODIGOS_UNSPSC.items():
+    for c,nombre in UNSPSC.items():
 
 
-        if clave in codigo:
+        if c in codigo:
 
 
-            puntos += 20
+            puntos += 25
 
             motivos.append(
-                descripcion
+                nombre
             )
 
 
@@ -359,40 +309,52 @@ def analizar_registro(registro):
 
 
 
-# ==========================================================
-# FILTRAR OPORTUNIDADES
-# ==========================================================
+# =====================================================
+# FILTRAR
+# =====================================================
 
 def filtrar(datos):
 
-    encontrados = []
+
+    salida=[]
 
 
-    for registro in datos:
+    vistos=set()
 
 
-        puntos, motivos = analizar_registro(
-            registro
-        )
+
+    for r in datos:
+
+
+        puntos,motivos = analizar(r)
+
 
 
         if puntos >= 20:
 
 
-            registro["puntaje"] = puntos
-
-            registro["motivos"] = (
-                ", ".join(motivos)
+            idp = r.get(
+                "id_del_proceso",
+                ""
             )
 
 
-            encontrados.append(
-                registro
-            )
+            if idp not in vistos:
+
+
+                vistos.add(idp)
+
+
+                r["puntaje"]=puntos
+
+                r["motivos"]=" | ".join(motivos)
+
+
+                salida.append(r)
 
 
 
-    encontrados.sort(
+    salida.sort(
 
         key=lambda x:x["puntaje"],
 
@@ -401,115 +363,82 @@ def filtrar(datos):
     )
 
 
-    return encontrados
+    return salida
 
 
 
-# ==========================================================
-# FORMATO DINERO
-# ==========================================================
-
-def dinero(valor):
-
-    try:
-
-        numero = float(valor)
-
-        return (
-            "$ {:,.0f}".format(numero)
-        )
-
-    except:
-
-        return "-"
-
-
-
-# ==========================================================
-# CREAR HTML
-# ==========================================================
+# =====================================================
+# HTML
+# =====================================================
 
 def generar_html(datos):
 
 
-    filas = ""
+    filas=""
 
 
-    for r in datos[:MAX_INFORME]:
-
-
-        entidad = (
-
-            r.get(
-                "entidad",
-                "-"
-            )
-
-        )
-
-
-        descripcion = (
-
-            r.get(
-                "descripci_n_del_procedimiento",
-                "-"
-            )
-
-        )
-
-
-        valor = (
-
-            r.get(
-                "precio_base",
-                "0"
-            )
-
-        )
+    for r in datos[:LIMITE_INFORME]:
 
 
         filas += f"""
 
 <tr>
 
-<td>{html.escape(str(entidad))}</td>
+<td>{html.escape(str(r.get('entidad','-')))}</td>
 
-<td>{html.escape(str(descripcion)[:250])}</td>
-
-<td>{dinero(valor)}</td>
-
-<td>{r.get('codigo_principal_de_categoria','')}</td>
 
 <td>
-{r.get('puntaje')} %
-<br>
-{r.get('motivos')}
+
+{html.escape(str(r.get('descripci_n_del_procedimiento','-'))[:250])}
+
 </td>
+
+
+<td>
+
+{r.get('codigo_principal_de_categoria','')}
+
+</td>
+
+
+<td>
+
+{r.get('puntaje')}
+
+<br>
+
+{r.get('motivos')}
+
+</td>
+
 
 <td>
 
 <a href="{r.get('urlproceso',{}).get('url','')}">
 
-Ver proceso
+Abrir
 
 </a>
 
 </td>
+
 
 </tr>
 
 """
 
 
+
     if not filas:
 
-        filas = """
+
+        filas="""
 
 <tr>
 
-<td colspan="6">
+<td colspan="5">
 
-No se encontraron oportunidades
+SIN RESULTADOS
 
 </td>
 
@@ -527,54 +456,17 @@ No se encontraron oportunidades
 
 <meta charset="utf-8">
 
-
 <style>
 
-body {{
+body{{font-family:Arial;background:#f2f2f2;padding:20px}}
 
-font-family:Arial;
+table{{width:100%;background:white;border-collapse:collapse}}
 
-background:#f1f5f9;
+th{{background:#003566;color:white;padding:10px}}
 
-padding:20px;
-
-}}
-
-
-table {{
-
-width:100%;
-
-border-collapse:collapse;
-
-background:white;
-
-}}
-
-
-th {{
-
-background:#003566;
-
-color:white;
-
-padding:10px;
-
-}}
-
-
-td {{
-
-padding:8px;
-
-border-bottom:1px solid #ddd;
-
-font-size:12px;
-
-}}
+td{{padding:8px;border-bottom:1px solid #ddd;font-size:12px}}
 
 </style>
-
 
 </head>
 
@@ -582,20 +474,24 @@ font-size:12px;
 <body>
 
 
-<h1>
-🛡️ Monitor SECOP Tecnología
-</h1>
+<h1>🛡️ Monitor SECOP Tecnología</h1>
 
 
 <p>
-Fecha:
+
+Generado:
+
 {datetime.now()}
+
 </p>
 
 
 <p>
+
 Resultados:
+
 {len(datos)}
+
 </p>
 
 
@@ -607,8 +503,6 @@ Resultados:
 <th>Entidad</th>
 
 <th>Descripción</th>
-
-<th>Valor</th>
 
 <th>UNSPSC</th>
 
@@ -633,33 +527,19 @@ Resultados:
 
 
 
-# ==========================================================
-# GUARDAR HTML
-# ==========================================================
+# =====================================================
+# GUARDAR
+# =====================================================
 
-def guardar(html_text):
+def guardar(texto):
 
 
-    nombre = (
-
-        "Informe_SECOP_"
-
-        +
-
-        datetime.now().strftime(
-            "%Y%m%d_%H%M"
-        )
-
-        +
-
-        ".html"
-
-    )
+    nombre="informe_secop.html"
 
 
     Path(nombre).write_text(
 
-        html_text,
+        texto,
 
         encoding="utf-8"
 
@@ -667,44 +547,45 @@ def guardar(html_text):
 
 
     log(
-        f"Archivo creado {nombre}"
+        "HTML generado"
     )
 
 
 
-# ==========================================================
-# ENVIAR CORREO
-# ==========================================================
+# =====================================================
+# EMAIL
+# =====================================================
 
-def enviar_correo(html_text):
+def enviar(html_text):
 
 
-    remitente = os.getenv(
+    usuario=os.getenv(
         "GMAIL_REMITENTE"
     )
 
 
-    password = os.getenv(
+    clave=os.getenv(
         "GMAIL_PASSWORD"
     )
 
 
-    destinatarios = os.getenv(
+    destinos=os.getenv(
         "DESTINATARIOS"
     )
 
 
-    if not remitente or not password or not destinatarios:
+    if not usuario or not clave or not destinos:
+
 
         log(
-            "Faltan secretos Gmail"
+            "Correo no configurado"
         )
 
         return
 
 
 
-    servidor = smtplib.SMTP_SSL(
+    servidor=smtplib.SMTP_SSL(
 
         "smtp.gmail.com",
 
@@ -715,36 +596,33 @@ def enviar_correo(html_text):
 
     servidor.login(
 
-        remitente,
+        usuario,
 
-        password
+        clave
 
     )
 
 
 
-    for correo in destinatarios.split(","):
+    for correo in destinos.split(","):
 
 
-        mensaje = MIMEMultipart(
+        msg=MIMEMultipart(
             "alternative"
         )
 
 
-        mensaje["Subject"] = (
-
-            "🛡️ Informe SECOP Tecnología"
-
-        )
+        msg["Subject"]="🛡️ Monitor SECOP Tecnología"
 
 
-        mensaje["From"] = remitente
+        msg["From"]=usuario
 
-        mensaje["To"] = correo.strip()
+
+        msg["To"]=correo.strip()
 
 
 
-        mensaje.attach(
+        msg.attach(
 
             MIMEText(
 
@@ -761,11 +639,11 @@ def enviar_correo(html_text):
 
         servidor.sendmail(
 
-            remitente,
+            usuario,
 
             correo.strip(),
 
-            mensaje.as_string()
+            msg.as_string()
 
         )
 
@@ -775,39 +653,36 @@ def enviar_correo(html_text):
         )
 
 
-
     servidor.quit()
 
 
 
-# ==========================================================
-# EJECUCIÓN
-# ==========================================================
+# =====================================================
+# MAIN
+# =====================================================
 
 def main():
 
+
     log(
-        "INICIANDO MONITOR SECOP"
+        "INICIANDO"
     )
 
 
-    datos = consultar_secop()
+    datos=descargar_secop()
+
+
+    oportunidades=filtrar(datos)
 
 
     log(
-        f"Total recibidos: {len(datos)}"
+
+        f"Oportunidades encontradas: {len(oportunidades)}"
+
     )
 
 
-    oportunidades = filtrar(datos)
-
-
-    log(
-        f"Oportunidades detectadas: {len(oportunidades)}"
-    )
-
-
-    informe = generar_html(
+    informe=generar_html(
         oportunidades
     )
 
@@ -817,7 +692,7 @@ def main():
     )
 
 
-    enviar_correo(
+    enviar(
         informe
     )
 
@@ -828,6 +703,6 @@ def main():
 
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
 
     main()
