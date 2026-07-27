@@ -1,25 +1,29 @@
 """
-SECOP II Monitor Inteligente Tecnología
-=======================================
+SECOP II Monitor Tecnología - Versión Diagnóstico
+=================================================
 
-Busca oportunidades de contratación relacionadas con:
+Descarga datos de SECOP II y analiza oportunidades:
 
 - Ciberseguridad
 - SOC
-- Centros de control
-- Monitoreo
-- CCTV
+- SIEM
+- ABIS
+- VeriLook
+- Neurotechnology
+- Biometría
+- Reconocimiento facial
 - Data Center
 - Cloud
-- Biometría
-- ABIS
-- Reconocimiento facial
+- AWS
+- Azure
 - IA
 - Analítica
+- Centro de monitoreo
+- CCTV
 - Infraestructura TI
 
-Arquitectura:
-SECOP API -> Python -> Filtros inteligentes -> HTML -> Gmail
+Modo:
+API SECOP -> Python -> Analizador -> HTML -> Gmail
 """
 
 
@@ -29,7 +33,8 @@ import smtplib
 import requests
 
 
-from datetime import datetime, timedelta
+from datetime import datetime
+
 from pathlib import Path
 
 
@@ -45,34 +50,17 @@ from email.mime.text import MIMEText
 
 CONFIG = {
 
+    "limite_api": 5000,
 
-    # Colombia completa
-    "departamento": "",
-
-
-    # Días hacia atrás
-
-    "dias_contratos": 90,
-
-    "dias_procesos": 90,
-
-
-    # Cantidad descargada desde SECOP
-
-    "limite_api": 500,
-
-
-    # Cantidad mostrada en informe
-
-    "limite_informe": 50,
-
+    "limite_informe": 100
 
 }
 
 
 
+
 # ======================================================
-# PALABRAS CLAVE TECNOLOGÍA
+# PALABRAS DE INTERÉS
 # ======================================================
 
 
@@ -80,19 +68,15 @@ PALABRAS_ALTA = [
 
     "ciberseguridad",
 
-    "seguridad informatica",
-
     "seguridad informática",
+
+    "seguridad informatica",
 
     "soc",
 
-    "centro de operaciones de seguridad",
-
     "siem",
 
-    "biometria",
-
-    "biometría",
+    "centro de operaciones de seguridad",
 
     "abis",
 
@@ -104,11 +88,15 @@ PALABRAS_ALTA = [
 
     "reconocimiento facial",
 
-    "identificacion biometrica",
+    "biometría",
+
+    "biometria",
 
     "identificación biométrica",
 
-    "control de acceso",
+    "identificacion biometrica",
+
+    "control de acceso"
 
 ]
 
@@ -134,17 +122,17 @@ PALABRAS_MEDIA = [
 
     "google cloud",
 
-    "virtualizacion",
-
     "virtualización",
+
+    "virtualizacion",
 
     "redes",
 
     "telecomunicaciones",
 
-    "infraestructura ti",
-
     "infraestructura tecnológica",
+
+    "infraestructura ti"
 
 ]
 
@@ -156,29 +144,17 @@ PALABRAS_GENERAL = [
 
     "hardware",
 
-    "tecnologia",
-
     "tecnología",
 
-    "sistema de información",
-
-    "aplicativo",
-
-    "plataforma",
-
-    "digital",
-
-    "automatización",
-
-    "automatizacion",
+    "tecnologia",
 
     "inteligencia artificial",
 
     "ia",
 
-    "analitica",
-
     "analítica",
+
+    "analitica",
 
     "big data",
 
@@ -190,25 +166,29 @@ PALABRAS_GENERAL = [
 
     "cctv",
 
+    "plataforma digital"
+
 ]
 
 
 
+
+
 # ======================================================
-# APIS SECOP
+# APIS
 # ======================================================
 
 
 API_CONTRATOS = (
 
-    "https://www.datos.gov.co/resource/jbjy-vk9h.json"
+"https://www.datos.gov.co/resource/jbjy-vk9h.json"
 
 )
 
 
 API_PROCESOS = (
 
-    "https://www.datos.gov.co/resource/p6dx-8zbt.json"
+"https://www.datos.gov.co/resource/p6dx-8zbt.json"
 
 )
 
@@ -216,14 +196,16 @@ API_PROCESOS = (
 
 HEADERS = {
 
-    "Accept": "application/json"
+    "Accept":"application/json"
 
 }
 
 
 
+
+
 # ======================================================
-# UTILIDADES
+# LOG
 # ======================================================
 
 
@@ -239,11 +221,383 @@ def log(texto):
 
 
 
+
+# ======================================================
+# CONSULTA DIRECTA SECOP
+# ======================================================
+
+
+def consultar_secop(url):
+
+
+    try:
+
+
+        respuesta = requests.get(
+
+            url,
+
+            params={
+
+                "$limit":
+                CONFIG["limite_api"]
+
+            },
+
+            headers=HEADERS,
+
+            timeout=90
+
+        )
+
+
+        respuesta.raise_for_status()
+
+
+        datos = respuesta.json()
+
+
+
+        log(
+            f"Registros recibidos: {len(datos)}"
+        )
+
+
+        if datos:
+
+
+            log(
+                "===== CAMPOS DETECTADOS ====="
+            )
+
+
+            print(
+                datos[0].keys()
+            )
+
+
+            log(
+                "===== PRIMER REGISTRO ====="
+            )
+
+
+            print(
+                datos[0]
+            )
+
+
+
+        return datos
+
+
+
+    except Exception as e:
+
+
+        log(
+            f"Error consultando API: {e}"
+        )
+
+
+        return []
+# ======================================================
+# EXTRAER TEXTO COMPLETO DEL REGISTRO
+# ======================================================
+
+
+def obtener_texto_registro(registro):
+
+
+    textos = []
+
+
+    for clave, valor in registro.items():
+
+
+        if valor is not None:
+
+
+            textos.append(
+
+                str(valor)
+
+            )
+
+
+
+    return (
+
+        " ".join(textos)
+
+        .lower()
+
+    )
+
+
+
+
+
+# ======================================================
+# ANALIZADOR DE OPORTUNIDADES
+# ======================================================
+
+
+def analizar_registro(registro):
+
+
+    texto = obtener_texto_registro(
+
+        registro
+
+    )
+
+
+
+    resultado = {
+
+
+        "nivel":
+
+            "🟢 Normal",
+
+
+        "coincidencias":
+
+            []
+
+    }
+
+
+
+    # Alta prioridad
+
+    for palabra in PALABRAS_ALTA:
+
+
+        if palabra.lower() in texto:
+
+
+            resultado["nivel"] = (
+
+                "🔴 Alta"
+
+            )
+
+
+            resultado["coincidencias"].append(
+
+                palabra
+
+            )
+
+
+
+
+    # Media prioridad
+
+    if resultado["nivel"] != "🔴 Alta":
+
+
+        for palabra in PALABRAS_MEDIA:
+
+
+            if palabra.lower() in texto:
+
+
+                resultado["nivel"] = (
+
+                    "🟠 Media"
+
+                )
+
+
+                resultado["coincidencias"].append(
+
+                    palabra
+
+                )
+
+
+
+
+    # Tecnología general
+
+    for palabra in PALABRAS_GENERAL:
+
+
+        if palabra.lower() in texto:
+
+
+            resultado["coincidencias"].append(
+
+                palabra
+
+            )
+
+
+
+    return resultado
+
+
+
+
+
+# ======================================================
+# FILTRO TECNOLÓGICO
+# ======================================================
+
+
+def filtrar_tecnologia(registros):
+
+
+    encontrados = []
+
+
+
+    for registro in registros:
+
+
+        analisis = analizar_registro(
+
+            registro
+
+        )
+
+
+
+        if analisis["coincidencias"]:
+
+
+
+            registro["prioridad"] = (
+
+                analisis["nivel"]
+
+            )
+
+
+
+            registro["palabras_detectadas"] = (
+
+                ", ".join(
+
+                    analisis["coincidencias"]
+
+                )
+
+            )
+
+
+
+            encontrados.append(
+
+                registro
+
+            )
+
+
+
+    return encontrados
+
+
+
+
+
+# ======================================================
+# OBTENER CONTRATOS
+# ======================================================
+
+
+def obtener_contratos():
+
+
+    log(
+
+        "Consultando contratos SECOP..."
+
+    )
+
+
+    registros = consultar_secop(
+
+        API_CONTRATOS
+
+    )
+
+
+
+    encontrados = filtrar_tecnologia(
+
+        registros
+
+    )
+
+
+
+    log(
+
+        f"Contratos tecnológicos encontrados: {len(encontrados)}"
+
+    )
+
+
+
+    return encontrados
+
+
+
+
+
+# ======================================================
+# OBTENER PROCESOS
+# ======================================================
+
+
+def obtener_procesos():
+
+
+    log(
+
+        "Consultando procesos SECOP..."
+
+    )
+
+
+    registros = consultar_secop(
+
+        API_PROCESOS
+
+    )
+
+
+
+    encontrados = filtrar_tecnologia(
+
+        registros
+
+    )
+
+
+
+    log(
+
+        f"Procesos tecnológicos encontrados: {len(encontrados)}"
+
+    )
+
+
+
+    return encontrados
+    # ======================================================
+# UTILIDADES HTML
+# ======================================================
+
+
 def dinero(valor):
 
     try:
 
-        numero = float(valor)
+        numero = float(valor or 0)
 
 
         if numero >= 1000000000:
@@ -270,256 +624,183 @@ def dinero(valor):
 
 
 
-def limpiar_texto(texto):
 
-    if not texto:
-
-        return ""
-
-
-    return str(texto).lower()
-
-
-
-
-def fecha(valor):
-
-    if not valor:
-
-        return "-"
-
-
-    return str(valor)[:10]
-# ======================================================
-# CONSULTA SECOP SIN FILTROS SQL COMPLEJOS
-# ======================================================
-
-
-def consultar_secop(url, limite):
-
-
-    try:
-
-
-        respuesta = requests.get(
-
-            url,
-
-            params={
-
-                "$limit": limite
-
-            },
-
-            headers=HEADERS,
-
-            timeout=60
-
-        )
-
-
-        respuesta.raise_for_status()
-
-
-        datos = respuesta.json()
-
-
-
-        log(
-
-            f"Registros descargados: {len(datos)}"
-
-        )
-
-
-        return datos
-
-
-
-    except Exception as error:
-
-
-        log(
-
-            f"Error consultando SECOP: {error}"
-
-        )
-
-
-        return []
-
-
-
-
-
-# ======================================================
-# BUSCADOR INTELIGENTE DE CAMPOS
-# ======================================================
-
-
-def texto_registro(registro):
-
-
-    campos = [
-
-        "nombre_entidad",
-
-        "entidad",
-
-        "objeto_del_contrato",
-
-        "descripcion_del_proceso",
-
-        "descripci_n_del_procedimiento",
-
-        "detalle_del_proceso",
-
-        "objeto",
-
-        "modalidad_de_contratacion",
-
-        "proveedor_adjudicado",
-
-        "razon_social"
-
-    ]
-
-
-
-    texto = []
-
+def obtener_campo(registro, campos):
 
 
     for campo in campos:
 
 
-        valor = registro.get(campo)
+        if campo in registro:
 
 
-        if valor:
+            return registro[campo]
 
 
-            texto.append(
-
-                str(valor)
-
-            )
+    return "-"
 
 
 
-    return limpiar_texto(
 
-        " ".join(texto)
+
+# ======================================================
+# CREAR FILAS HTML
+# ======================================================
+
+
+def crear_fila(registro):
+
+
+    entidad = obtener_campo(
+
+        registro,
+
+        [
+
+            "nombre_entidad",
+
+            "entidad",
+
+            "nombre_de_la_entidad"
+
+        ]
 
     )
 
 
 
+    descripcion = obtener_campo(
 
+        registro,
 
-# ======================================================
-# CLASIFICACIÓN DE OPORTUNIDAD
-# ======================================================
+        [
 
+            "objeto_del_contrato",
 
-def analizar_oportunidad(registro):
+            "descripcion_del_proceso",
 
+            "descripci_n_del_procedimiento",
 
-    texto = texto_registro(
+            "objeto"
 
-        registro
+        ]
 
     )
 
 
 
-    resultado = {
+    valor = obtener_campo(
 
+        registro,
 
-        "nivel": "🟢 Normal",
+        [
 
-        "coincidencias": []
+            "valor_del_contrato",
 
-    }
+            "precio_base",
 
+            "valor_estimado"
 
+        ]
 
-    for palabra in PALABRAS_ALTA:
-
-
-        if palabra in texto:
-
-
-            resultado["nivel"] = "🔴 Alta"
-
-
-            resultado["coincidencias"].append(
-
-                palabra
-
-            )
+    )
 
 
 
+    fecha = obtener_campo(
 
-    if resultado["nivel"] != "🔴 Alta":
+        registro,
 
+        [
 
-        for palabra in PALABRAS_MEDIA:
+            "fecha_de_firma",
 
+            "fecha_de_publicacion_del",
 
-            if palabra in texto:
+            "fecha_de_publicacion"
 
+        ]
 
-                resultado["nivel"] = "🟠 Media"
-
-
-                resultado["coincidencias"].append(
-
-                    palabra
-
-                )
+    )
 
 
 
+    return f"""
 
-    for palabra in PALABRAS_GENERAL:
+<tr>
 
+<td>
 
-        if palabra in texto:
+{registro.get('prioridad','')}
 
-
-            resultado["coincidencias"].append(
-
-                palabra
-
-            )
+</td>
 
 
+<td>
 
-    return resultado
+{entidad}
+
+</td>
+
+
+<td>
+
+{str(descripcion)[:180]}
+
+</td>
+
+
+<td>
+
+{dinero(valor)}
+
+</td>
+
+
+<td>
+
+{registro.get(
+'palabras_detectadas',
+''
+)}
+
+</td>
+
+
+<td>
+
+{str(fecha)[:10]}
+
+</td>
+
+
+</tr>
+
+"""
 
 
 
 
 
 # ======================================================
-# FILTRAR OPORTUNIDADES
+# GENERADOR HTML PRINCIPAL
 # ======================================================
 
 
-def filtrar_oportunidades(registros):
+def generar_html(contratos, procesos):
 
 
-    encontrados = []
+    filas_contratos = ""
 
 
+    for registro in contratos[
 
-    for registro in registros:
+        :CONFIG["limite_informe"]
+
+    ]:
 
 
-
-        analisis = analizar_oportunidad(
+        filas_contratos += crear_fila(
 
             registro
 
@@ -527,299 +808,22 @@ def filtrar_oportunidades(registros):
 
 
 
-        # Solo guardar si encontró tecnología
 
+    filas_procesos = ""
 
-        if analisis["coincidencias"]:
 
+    for registro in procesos[
 
+        :CONFIG["limite_informe"]
 
-            registro["prioridad"] = (
+    ]:
 
-                analisis["nivel"]
 
-            )
+        filas_procesos += crear_fila(
 
-
-            registro["palabras_detectadas"] = (
-
-                ", ".join(
-
-                    analisis["coincidencias"]
-
-                )
-
-            )
-
-
-            encontrados.append(
-
-                registro
-
-            )
-
-
-
-    return encontrados
-
-
-
-
-
-# ======================================================
-# OBTENER CONTRATOS
-# ======================================================
-
-
-def obtener_contratos():
-
-
-
-    log(
-
-        "Descargando contratos SECOP..."
-
-    )
-
-
-
-    registros = consultar_secop(
-
-        API_CONTRATOS,
-
-        CONFIG["limite_api"]
-
-    )
-
-
-
-    resultados = filtrar_oportunidades(
-
-        registros
-
-    )
-
-
-
-    log(
-
-        f"Contratos tecnológicos encontrados: {len(resultados)}"
-
-    )
-
-
-
-    return resultados
-
-
-
-
-
-# ======================================================
-# OBTENER PROCESOS ABIERTOS
-# ======================================================
-
-
-def obtener_procesos():
-
-
-
-    log(
-
-        "Descargando procesos SECOP..."
-
-    )
-
-
-
-    registros = consultar_secop(
-
-        API_PROCESOS,
-
-        CONFIG["limite_api"]
-
-    )
-
-
-
-    resultados = filtrar_oportunidades(
-
-        registros
-
-    )
-
-
-
-    log(
-
-        f"Oportunidades encontradas: {len(resultados)}"
-
-    )
-
-
-
-    return resultados
-    # ======================================================
-# GENERADOR HTML
-# ======================================================
-
-
-def generar_html(contratos, procesos):
-
-
-    fecha_reporte = datetime.now().strftime(
-        "%d/%m/%Y %H:%M"
-    )
-
-
-
-    total = 0
-
-
-
-    for c in contratos:
-
-
-        try:
-
-            total += float(
-
-                c.get(
-                    "valor_del_contrato",
-                    0
-                )
-
-                or 0
-
-            )
-
-
-        except:
-
-            pass
-
-
-
-
-    def fila(registro):
-
-
-        nombre = (
-
-            registro.get(
-                "nombre_entidad"
-            )
-
-            or
-
-            registro.get(
-                "entidad"
-            )
-
-            or "-"
+            registro
 
         )
-
-
-
-        descripcion = (
-
-            registro.get(
-                "objeto_del_contrato"
-            )
-
-            or
-
-            registro.get(
-                "descripci_n_del_procedimiento"
-            )
-
-            or
-
-            registro.get(
-                "descripcion_del_proceso"
-            )
-
-            or "-"
-
-        )
-
-
-
-        valor = (
-
-            registro.get(
-                "valor_del_contrato"
-            )
-
-            or
-
-            registro.get(
-                "precio_base"
-            )
-
-            or 0
-
-        )
-
-
-
-        return f"""
-
-        <tr>
-
-        <td>
-        {registro.get('prioridad','')}
-        </td>
-
-
-        <td>
-        {nombre}
-        </td>
-
-
-        <td>
-        {descripcion[:150]}
-        </td>
-
-
-        <td>
-        {dinero(valor)}
-        </td>
-
-
-        <td>
-        {registro.get(
-            'palabras_detectadas',
-            ''
-        )}
-        </td>
-
-
-        </tr>
-
-        """
-
-
-
-
-    filas_contratos = "".join(
-
-        fila(c)
-
-        for c in contratos[:CONFIG["limite_informe"]]
-
-    )
-
-
-
-    filas_procesos = "".join(
-
-        fila(p)
-
-        for p in procesos[:CONFIG["limite_informe"]]
-
-    )
 
 
 
@@ -830,17 +834,17 @@ def generar_html(contratos, procesos):
 
         filas_contratos = """
 
-        <tr>
+<tr>
 
-        <td colspan="5">
+<td colspan="6">
 
-        No se encontraron contratos tecnológicos
+No se encontraron contratos tecnológicos
 
-        </td>
+</td>
 
-        </tr>
+</tr>
 
-        """
+"""
 
 
 
@@ -849,18 +853,17 @@ def generar_html(contratos, procesos):
 
         filas_procesos = """
 
-        <tr>
+<tr>
 
-        <td colspan="5">
+<td colspan="6">
 
-        No se encontraron procesos tecnológicos
+No se encontraron procesos tecnológicos
 
-        </td>
+</td>
 
-        </tr>
+</tr>
 
-        """
-
+"""
 
 
 
@@ -878,7 +881,9 @@ def generar_html(contratos, procesos):
 
 
 <title>
+
 Monitor SECOP Tecnología
+
 </title>
 
 
@@ -887,10 +892,9 @@ Monitor SECOP Tecnología
 
 body {{
 
-font-family:
-Arial, sans-serif;
+font-family:Arial, sans-serif;
 
-background:#f1f5f9;
+background:#eef2f7;
 
 padding:20px;
 
@@ -898,7 +902,7 @@ padding:20px;
 
 
 
-.contenedor {{
+.container {{
 
 max-width:1200px;
 
@@ -910,67 +914,19 @@ padding:30px;
 
 border-radius:15px;
 
-box-shadow:
-0 5px 20px rgba(0,0,0,.15);
-
 }}
 
 
 
-.cabecera {{
+.header {{
 
-background:
-linear-gradient(
-135deg,
-#003566,
-#0077b6
-);
+background:#003566;
 
 color:white;
 
 padding:25px;
 
-border-radius:12px;
-
-}}
-
-
-
-.tarjetas {{
-
-display:flex;
-
-gap:15px;
-
-margin:20px 0;
-
-flex-wrap:wrap;
-
-}}
-
-
-
-.tarjeta {{
-
-background:#eaf4ff;
-
-padding:20px;
-
 border-radius:10px;
-
-min-width:180px;
-
-text-align:center;
-
-}}
-
-
-
-.tarjeta b {{
-
-font-size:26px;
-
-color:#003566;
 
 }}
 
@@ -981,6 +937,8 @@ table {{
 width:100%;
 
 border-collapse:collapse;
+
+margin-top:20px;
 
 font-size:13px;
 
@@ -996,20 +954,15 @@ color:white;
 
 padding:10px;
 
-text-align:left;
-
 }}
 
 
 
 td {{
 
-padding:10px;
+padding:9px;
 
-border-bottom:
-1px solid #ddd;
-
-vertical-align:top;
+border-bottom:1px solid #ddd;
 
 }}
 
@@ -1017,21 +970,15 @@ vertical-align:top;
 
 tr:nth-child(even) {{
 
-background:#f8fafc;
+background:#f7f9fc;
 
 }}
 
 
 
-.footer {{
+.badge {{
 
-margin-top:30px;
-
-text-align:center;
-
-font-size:12px;
-
-color:#777;
+font-weight:bold;
 
 }}
 
@@ -1042,25 +989,28 @@ color:#777;
 </head>
 
 
-
 <body>
 
 
-<div class="contenedor">
+<div class="container">
 
 
-
-<div class="cabecera">
+<div class="header">
 
 
 <h1>
+
 🛡️ Monitor SECOP II Tecnología
+
 </h1>
 
 
 <p>
+
 Generado:
-{fecha_reporte}
+
+{datetime.now().strftime("%d/%m/%Y %H:%M")}
+
 </p>
 
 
@@ -1068,62 +1018,11 @@ Generado:
 
 
 
-
-<div class="tarjetas">
-
-
-<div class="tarjeta">
-
-<b>
-{len(contratos)}
-</b>
-
-<br>
-
-Contratos detectados
-
-</div>
-
-
-
-<div class="tarjeta">
-
-<b>
-{len(procesos)}
-</b>
-
-<br>
-
-Procesos encontrados
-
-</div>
-
-
-
-<div class="tarjeta">
-
-<b>
-{dinero(total)}
-</b>
-
-<br>
-
-Valor contratado
-
-</div>
-
-
-
-</div>
-
-
-
-
-
 <h2>
-📌 Contratos tecnológicos
-</h2>
 
+🔐 Contratos detectados
+
+</h2>
 
 
 <table>
@@ -1132,23 +1031,44 @@ Valor contratado
 <tr>
 
 <th>
+
 Prioridad
+
 </th>
 
+
 <th>
+
 Entidad
+
 </th>
 
+
 <th>
+
 Descripción
+
 </th>
 
+
 <th>
+
 Valor
+
 </th>
 
+
 <th>
-Detectado por
+
+Coincidencias
+
+</th>
+
+
+<th>
+
+Fecha
+
 </th>
 
 </tr>
@@ -1164,9 +1084,10 @@ Detectado por
 
 
 <h2>
-🚀 Nuevas oportunidades
-</h2>
 
+🚀 Nuevas oportunidades
+
+</h2>
 
 
 <table>
@@ -1175,23 +1096,44 @@ Detectado por
 <tr>
 
 <th>
+
 Prioridad
+
 </th>
 
+
 <th>
+
 Entidad
+
 </th>
 
+
 <th>
+
 Descripción
+
 </th>
 
+
 <th>
+
 Presupuesto
+
 </th>
 
+
 <th>
-Detectado por
+
+Coincidencias
+
+</th>
+
+
+<th>
+
+Fecha
+
 </th>
 
 </tr>
@@ -1204,17 +1146,11 @@ Detectado por
 
 
 
+<p>
 
-<div class="footer">
+Fuente: SECOP II - datos.gov.co
 
-Fuente:
-SECOP II · datos.gov.co
-
-<br>
-
-Monitor automático de oportunidades tecnológicas
-
-</div>
+</p>
 
 
 
@@ -1229,9 +1165,10 @@ Monitor automático de oportunidades tecnológicas
 """
 
 
+
     return html
     # ======================================================
-# GUARDAR INFORME HTML
+# GUARDAR HTML
 # ======================================================
 
 
@@ -1240,12 +1177,14 @@ def guardar_html(html):
 
     nombre = (
 
-        "informe_secop_tecnologia_"
+        "monitor_secop_tecnologia_"
 
         +
 
         datetime.now().strftime(
+
             "%Y-%m-%d_%H-%M"
+
         )
 
         +
@@ -1253,7 +1192,6 @@ def guardar_html(html):
         ".html"
 
     )
-
 
 
     Path(nombre).write_text(
@@ -1265,10 +1203,9 @@ def guardar_html(html):
     )
 
 
-
     log(
 
-        f"Archivo generado: {nombre}"
+        f"HTML creado: {nombre}"
 
     )
 
@@ -1280,7 +1217,7 @@ def guardar_html(html):
 
 
 # ======================================================
-# ENVÍO DE CORREO GMAIL
+# ENVÍO EMAIL GMAIL
 # ======================================================
 
 
@@ -1320,7 +1257,7 @@ def enviar_correo(html, contratos, procesos):
 
         log(
 
-            "❌ Faltan credenciales Gmail"
+            "⚠️ Gmail no configurado"
 
         )
 
@@ -1332,11 +1269,11 @@ def enviar_correo(html, contratos, procesos):
 
     lista = [
 
-        x.strip()
+        correo.strip()
 
-        for x in destinatarios.split(",")
+        for correo in destinatarios.split(",")
 
-        if x.strip()
+        if correo.strip()
 
     ]
 
@@ -1347,7 +1284,7 @@ def enviar_correo(html, contratos, procesos):
 
         log(
 
-            "❌ No hay destinatarios configurados"
+            "⚠️ No hay destinatarios"
 
         )
 
@@ -1359,12 +1296,14 @@ def enviar_correo(html, contratos, procesos):
 
     asunto = (
 
-        "🛡️ SECOP Tecnología "
+        "🛡️ Monitor SECOP Tecnología "
 
         +
 
         datetime.now().strftime(
+
             "%d/%m/%Y"
+
         )
 
         +
@@ -1403,7 +1342,7 @@ def enviar_correo(html, contratos, procesos):
 
 
 
-        for correo in lista:
+        for destino in lista:
 
 
             mensaje = MIMEMultipart(
@@ -1431,7 +1370,7 @@ def enviar_correo(html, contratos, procesos):
             )
 
 
-            mensaje["To"] = correo
+            mensaje["To"] = destino
 
 
 
@@ -1456,7 +1395,7 @@ def enviar_correo(html, contratos, procesos):
 
                 remitente,
 
-                correo,
+                destino,
 
                 mensaje.as_string()
 
@@ -1466,7 +1405,7 @@ def enviar_correo(html, contratos, procesos):
 
             log(
 
-                f"✅ Enviado a {correo}"
+                f"Correo enviado a: {destino}"
 
             )
 
@@ -1477,30 +1416,12 @@ def enviar_correo(html, contratos, procesos):
 
 
 
-    except smtplib.SMTPAuthenticationError:
-
-
-        log(
-
-            "❌ Gmail rechazó autenticación"
-
-        )
-
-
-        log(
-
-            "Usa una contraseña de aplicación Gmail"
-
-        )
-
-
-
     except Exception as error:
 
 
         log(
 
-            f"❌ Error enviando correo: {error}"
+            f"Error enviando correo: {error}"
 
         )
 
@@ -1509,7 +1430,7 @@ def enviar_correo(html, contratos, procesos):
 
 
 # ======================================================
-# PROCESO PRINCIPAL
+# EJECUCIÓN PRINCIPAL
 # ======================================================
 
 
@@ -1525,7 +1446,7 @@ def main():
 
     log(
 
-        "🛡️ SECOP Monitor Tecnología iniciado"
+        "🛡️ INICIANDO MONITOR SECOP TECNOLOGÍA"
 
     )
 
@@ -1538,16 +1459,8 @@ def main():
 
 
 
-
-    # Descargar contratos
-
-
     contratos = obtener_contratos()
 
-
-
-
-    # Descargar procesos
 
 
     procesos = obtener_procesos()
@@ -1557,7 +1470,7 @@ def main():
 
     log(
 
-        "Generando informe..."
+        "Creando informe HTML..."
 
     )
 
@@ -1573,6 +1486,7 @@ def main():
 
 
 
+
     guardar_html(
 
         html
@@ -1584,7 +1498,7 @@ def main():
 
     log(
 
-        "Enviando correo..."
+        "Preparando envío..."
 
     )
 
@@ -1605,14 +1519,29 @@ def main():
 
     log(
 
-        "✅ Finalizado correctamente"
+        "RESUMEN FINAL"
 
     )
 
 
     log(
 
-        "=" * 60
+        f"Contratos encontrados: {len(contratos)}"
+
+    )
+
+
+    log(
+
+        f"Procesos encontrados: {len(procesos)}"
+
+    )
+
+
+
+    log(
+
+        "✅ TERMINADO"
 
     )
 
