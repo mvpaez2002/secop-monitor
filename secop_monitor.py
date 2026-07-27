@@ -16,7 +16,9 @@ from email.mime.text import MIMEText
 
 API_SECOP = "https://www.datos.gov.co/resource/p6dx-8zbt.json"
 
-DIAS_BUSQUEDA = 180
+# Ventana de búsqueda: cuántos días hacia atrás se consulta desde "hoy".
+# 1 = solo lo publicado el día de la corrida (uso diario / cron diario).
+DIAS_BUSQUEDA = 1
 
 MAX_RESULTADOS_API = 1000
 
@@ -205,11 +207,18 @@ def log(texto):
 def consultar_secop():
 
 
+    # Se parte de la medianoche de HOY (no de "ahora mismo"), y se resta
+    # (DIAS_BUSQUEDA - 1) días. Con DIAS_BUSQUEDA = 1 esto da exactamente
+    # el día de hoy completo, que es lo que se necesita para una corrida diaria.
+    inicio_hoy = datetime.now().replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
     fecha = (
 
-        datetime.now()
+        inicio_hoy
         -
-        timedelta(days=DIAS_BUSQUEDA)
+        timedelta(days=DIAS_BUSQUEDA - 1)
 
     ).strftime(
         "%Y-%m-%dT00:00:00.000"
@@ -283,7 +292,13 @@ def consultar_secop():
                     "$q": palabra,
 
                     "$where":
-                    f"fecha_de_publicacion_del >= '{fecha}'"
+                    f"fecha_de_publicacion_del >= '{fecha}'",
+
+                    # Orden determinístico: sin esto, Socrata puede devolver
+                    # un subconjunto distinto en cada corrida cuando hay más
+                    # de MAX_RESULTADOS_API resultados posibles.
+                    "$order":
+                    "fecha_de_publicacion_del DESC, id_del_proceso"
 
                 },
 
