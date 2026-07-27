@@ -650,76 +650,33 @@ def generar_html(datos):
 
 
         filas += f"""
-
 <tr>
-
-<td>
-<b>{html.escape(str(entidad))}</b>
-</td>
-
-
-<td>
-{html.escape(str(descripcion)[:350])}
-</td>
-
-
-<td>
-
-{dinero(valor)}
-
-</td>
-
-
-
-<td>
-
-<span style="
-background:{color};
-color:white;
-padding:5px 10px;
-border-radius:15px;
-">
-
-{puntaje} puntos
-
-</span>
-
-<br>
-
-<small>
-
-{nivel(puntaje)}
-
-</small>
-
-</td>
-
-
-
-<td>
-
-{html.escape(
-str(r.get("motivos",""))
-)}
-
-</td>
-
-
-
-<td>
-
-<a target="_blank"
-href="{link}">
-
-Abrir SECOP
-
-</a>
-
-</td>
-
-
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
+    <b>{html.escape(str(entidad))}</b>
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
+    {html.escape(str(descripcion)[:350])}
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
+    {dinero(valor)}
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="background-color:{color};color:#ffffff;padding:5px 10px;font-family:Arial,sans-serif;font-size:12px;">
+          {puntaje} puntos
+        </td>
+      </tr>
+    </table>
+    <div style="font-size:11px;color:#475569;margin-top:4px;">{nivel(puntaje)}</div>
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
+    {html.escape(str(r.get("motivos","")))}
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;">
+    <a target="_blank" href="{link}" style="color:#2563eb;font-weight:bold;text-decoration:underline;">Abrir SECOP</a>
+  </td>
 </tr>
-
 """
 
 
@@ -728,19 +685,11 @@ Abrir SECOP
 
 
         filas = """
-
 <tr>
-
-<td colspan="6">
-
-<h3>
-No se encontraron oportunidades
-</h3>
-
-</td>
-
+  <td colspan="6" style="padding:20px;text-align:center;font-family:Arial,sans-serif;">
+    <h3 style="margin:0;color:#1e293b;">No se encontraron oportunidades</h3>
+  </td>
 </tr>
-
 """
 
 
@@ -750,342 +699,117 @@ No se encontraron oportunidades
     )
 
 
+    def tarjeta(valor, etiqueta):
+        return f"""
+<td width="25%" style="padding:8px;" valign="top">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #e2e8f0;">
+    <tr>
+      <td style="padding:20px;font-family:Arial,sans-serif;">
+        <div style="font-size:30px;font-weight:bold;color:#1d4ed8;line-height:1.2;">{valor}</div>
+        <div style="font-size:13px;color:#1e293b;margin-top:4px;">{etiqueta}</div>
+      </td>
+    </tr>
+  </table>
+</td>
+"""
 
-    return f"""
 
-<!DOCTYPE html>
-
-<html>
-
+    return f"""<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
-
 <meta charset="UTF-8">
-
-
-<title>
-Monitor SECOP Seguridad
-</title>
-
-
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!--[if mso]>
+<noscript>
+<xml>
+<o:OfficeDocumentSettings>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+</noscript>
+<![endif]-->
+<title>Monitor SECOP Seguridad</title>
 <style>
-
-
-body {{
-
-margin:0;
-
-font-family:
-Segoe UI,Arial;
-
-background:#eef2ff;
-
-color:#1e293b;
-
-}}
-
-
-
-.header {{
-
-background:
-linear-gradient(
-135deg,
-#020617,
-#1d4ed8
-);
-
-color:white;
-
-padding:35px;
-
-}}
-
-
-
-.header h1 {{
-
-margin:0;
-
-font-size:32px;
-
-}}
-
-
-
-.cards {{
-
-display:flex;
-
-gap:20px;
-
-padding:25px;
-
-flex-wrap:wrap;
-
-}}
-
-
-
-.card {{
-
-background:white;
-
-padding:20px;
-
-border-radius:15px;
-
-box-shadow:
-0 5px 15px #0002;
-
-min-width:220px;
-
-}}
-
-
-
-.card h2 {{
-
-margin:0;
-
-font-size:32px;
-
-color:#1d4ed8;
-
-}}
-
-
-
-.container {{
-
-padding:25px;
-
-}}
-
-
-
-table {{
-
-width:100%;
-
-background:white;
-
-border-collapse:collapse;
-
-border-radius:15px;
-
-overflow:hidden;
-
-box-shadow:
-0 5px 20px #0002;
-
-}}
-
-
-
-th {{
-
-background:#0f172a;
-
-color:white;
-
-padding:14px;
-
-text-align:left;
-
-}}
-
-
-
-td {{
-
-padding:12px;
-
-border-bottom:
-1px solid #e2e8f0;
-
-font-size:13px;
-
-}}
-
-
-
-tr:hover {{
-
-background:#f8fafc;
-
-}}
-
-
-
-a {{
-
-color:#2563eb;
-
-font-weight:bold;
-
-}}
-
-
-.badge {{
-
-background:#16a34a;
-
-color:white;
-
-padding:8px 15px;
-
-border-radius:20px;
-
-}}
-
-
-
+  body, table, td {{ font-family: Arial, "Segoe UI", sans-serif; }}
+  body {{ margin:0; padding:0; background-color:#eef2ff; color:#1e293b; }}
+  a {{ color:#2563eb; font-weight:bold; }}
+  @media only screen and (max-width: 600px) {{
+    .stack-card {{ display:block !important; width:100% !important; }}
+  }}
 </style>
-
-
 </head>
+<body style="margin:0;padding:0;background-color:#eef2ff;">
 
-
-<body>
-
-
-
-<div class="header">
-
-
-<h1>
-🛡️ Monitor SECOP Seguridad Tecnológica
-</h1>
-
-
-<p>
-Centros de control | SOC | SIEM | CCTV | Ciberseguridad | Infraestructura TI
-</p>
-
-
-<p>
-Generado:
-{fecha}
-
-</p>
-
-
-</div>
-
-
-
-<div class="cards">
-
-
-<div class="card">
-
-<h2>
-{len(datos)}
-</h2>
-
-<p>
-Oportunidades detectadas
-</p>
-
-</div>
-
-
-
-<div class="card">
-
-<h2>
-{sum(1 for x in datos if x.get("puntaje",0)>=80)}
-</h2>
-
-<p>
-Alertas críticas
-</p>
-
-</div>
-
-
-
-<div class="card">
-
-<h2>
-{sum(1 for x in datos if "cctv" in str(x.get("motivos","")).lower())}
-</h2>
-
-<p>
-CCTV / Video seguridad
-</p>
-
-</div>
-
-
-
-<div class="card">
-
-<h2>
-{sum(1 for x in datos if "soc" in str(x.get("motivos","")).lower())}
-</h2>
-
-<p>
-SOC / SIEM
-</p>
-
-</div>
-
-
-</div>
-
-
-
-<div class="container">
-
-
-<table>
-
-
+<!-- wrapper -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef2ff;">
 <tr>
+<td align="center" style="padding:20px 10px;">
 
-<th>
-Entidad
-</th>
+<!-- content, fixed width so Outlook doesn't stretch it -->
+<table role="presentation" width="700" cellpadding="0" cellspacing="0" border="0" style="width:700px;max-width:700px;background-color:#eef2ff;">
 
-<th>
-Descripción
-</th>
-
-<th>
-Valor
-</th>
-
-<th>
-Nivel
-</th>
-
-<th>
-Detectado
-</th>
-
-<th>
-Enlace
-</th>
-
+<!-- header (solid color instead of gradient, Outlook doesn't render linear-gradient) -->
+<tr>
+<td style="background-color:#1d4ed8;padding:30px 35px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td>
+        <div style="font-family:Arial,sans-serif;color:#ffffff;font-size:28px;font-weight:bold;">
+          &#128737; Monitor SECOP Seguridad Tecnol&oacute;gica
+        </div>
+        <div style="font-family:Arial,sans-serif;color:#dbe4ff;font-size:13px;margin-top:8px;">
+          Centros de control | SOC | SIEM | CCTV | Ciberseguridad | Infraestructura TI
+        </div>
+        <div style="font-family:Arial,sans-serif;color:#dbe4ff;font-size:12px;margin-top:6px;">
+          Generado: {fecha}
+        </div>
+      </td>
+    </tr>
+  </table>
+</td>
 </tr>
 
+<!-- cards row (table-based, not flexbox) -->
+<tr>
+<td style="padding:15px 20px;background-color:#eef2ff;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      {tarjeta(len(datos), "Oportunidades detectadas")}
+      {tarjeta(sum(1 for x in datos if x.get("puntaje",0)>=80), "Alertas cr&iacute;ticas")}
+      {tarjeta(sum(1 for x in datos if "cctv" in str(x.get("motivos","")).lower()), "CCTV / Video seguridad")}
+      {tarjeta(sum(1 for x in datos if "soc" in str(x.get("motivos","")).lower()), "SOC / SIEM")}
+    </tr>
+  </table>
+</td>
+</tr>
 
-{filas}
-
+<!-- table container -->
+<tr>
+<td style="padding:15px 20px 30px 20px;background-color:#eef2ff;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #e2e8f0;">
+    <tr>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Entidad</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Descripci&oacute;n</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Valor</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Nivel</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Detectado</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Enlace</th>
+    </tr>
+    {filas}
+  </table>
+</td>
+</tr>
 
 </table>
+<!-- /content -->
 
-
-</div>
-
-
+</td>
+</tr>
+</table>
+<!-- /wrapper -->
 
 </body>
-
 </html>
-
 """
 
 
