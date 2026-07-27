@@ -1,122 +1,232 @@
 """
-SECOP II Monitor Automático
-===========================
+SECOP II Monitor Inteligente
+============================
 
-Consulta información pública de SECOP II mediante datos.gov.co
-Genera informe HTML y envía correo automático.
+Monitor automático de oportunidades tecnológicas
+en SECOP II.
+
+Busca:
+- Ciberseguridad
+- SOC
+- Centros de control
+- Monitoreo
+- Data Center
+- Nube / Cloud
+- Biometría
+- ABIS
+- IA
+- Analítica
+- Infraestructura TI
+- Redes
+- Software
 
 Compatible con GitHub Actions.
-
-Variables requeridas:
-GMAIL_REMITENTE
-GMAIL_PASSWORD
-DESTINATARIOS
 """
+
 
 import os
 import sys
 import smtplib
 import requests
 
+
 from datetime import datetime, timedelta
 from pathlib import Path
+
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-# =====================================================
-# CONFIGURACIÓN
-# =====================================================
+
+# ======================================================
+# CONFIGURACIÓN PRINCIPAL
+# ======================================================
+
 
 CONFIG = {
 
-    # Filtros generales
+
+    # Colombia completa
     "departamento": "",
+
+
+    # Cantidad de días a revisar
+
+    "dias_contratos": 30,
+
+    "dias_procesos": 60,
+
+
+    # Máximo de resultados
+
+    "limite": 100,
+
+
+    # Palabras de búsqueda tecnológica
+
     "palabras_clave": [
-    "ciberseguridad",
-    "seguridad informática",
-    "seguridad digital",
-    "SOC",
-    "centro de operaciones de seguridad",
-    "centro de control",
-    "monitoreo",
-    "videovigilancia",
-    "CCTV",
-    "data center",
-    "centro de datos",
-    "nube",
-    "cloud",
-    "computación en la nube",
-    "AWS",
-    "Azure",
-    "Google Cloud",
-    "biometría",
-    "biometrico",
-    "ABIS",
-    "identificación biométrica",
-    "reconocimiento facial",
-    "inteligencia artificial",
-    "IA",
-    "machine learning",
-    "analítica de datos",
-    "big data",
-    "software",
-    "hardware",
-    "redes",
-    "telecomunicaciones",
-    "infraestructura tecnológica",
-    "TI",
-    "tecnologías de información"
-],
 
-    # Días de búsqueda
-    "dias_contratos": 15,
-    "dias_procesos": 30,
+        "ciberseguridad",
 
-    # Cantidad máxima
-    "limite": 50,
+        "seguridad informática",
+
+        "seguridad digital",
+
+        "SOC",
+
+        "centro de operaciones de seguridad",
+
+        "centro de control",
+
+        "centro de monitoreo",
+
+        "monitoreo",
+
+        "supervisión tecnológica",
+
+        "videovigilancia",
+
+        "CCTV",
+
+        "control de acceso",
+
+        "data center",
+
+        "centro de datos",
+
+        "infraestructura tecnológica",
+
+        "nube",
+
+        "cloud",
+
+        "computación en la nube",
+
+        "AWS",
+
+        "Azure",
+
+        "Google Cloud",
+
+        "biometría",
+
+        "biometrico",
+
+        "biométrico",
+
+        "ABIS",
+
+        "sistema automático de identificación biométrica",
+
+        "reconocimiento facial",
+
+        "identificación biométrica",
+
+        "inteligencia artificial",
+
+        "IA",
+
+        "machine learning",
+
+        "analítica de datos",
+
+        "big data",
+
+        "software",
+
+        "hardware",
+
+        "servidores",
+
+        "almacenamiento",
+
+        "redes",
+
+        "telecomunicaciones",
+
+        "infraestructura TI",
+
+        "tecnologías de información",
+
+        "transformación digital"
+
+    ]
+
 }
 
 
-# Dataset SECOP II
+
+# ======================================================
+# API SECOP II
+# ======================================================
+
 
 API_CONTRATOS = (
+
     "https://www.datos.gov.co/resource/jbjy-vk9h.json"
+
 )
 
+
 API_PROCESOS = (
+
     "https://www.datos.gov.co/resource/p6dx-8zbt.json"
+
 )
+
 
 
 HEADERS = {
+
     "Accept": "application/json"
+
 }
 
 
-# =====================================================
-# UTILIDADES
-# =====================================================
 
-def log(texto):
+
+# ======================================================
+# UTILIDADES
+# ======================================================
+
+
+def log(mensaje):
+
     hora = datetime.now().strftime("%H:%M:%S")
-    print(f"[{hora}] {texto}", flush=True)
+
+    print(
+        f"[{hora}] {mensaje}",
+        flush=True
+    )
+
 
 
 
 def dinero(valor):
 
     try:
-        valor = float(valor)
 
-        if valor >= 1000000000:
-            return f"${valor/1000000000:.1f} B"
+        numero = float(valor)
 
-        if valor >= 1000000:
-            return f"${valor/1000000:.0f} M"
 
-        return f"${valor:,.0f}"
+        if numero >= 1000000000:
+
+            return (
+                f"${numero/1000000000:.1f} "
+                "mil millones"
+            )
+
+
+        if numero >= 1000000:
+
+            return (
+                f"${numero/1000000:.0f} millones"
+            )
+
+
+        return f"${numero:,.0f}"
+
 
     except:
 
@@ -124,93 +234,188 @@ def dinero(valor):
 
 
 
+
 def fecha(valor):
 
     if not valor:
-        return "-"
-
-    try:
-        return valor[:10]
-
-    except:
 
         return "-"
 
 
-
-# =====================================================
-# CONSULTA API
-# =====================================================
+    return str(valor)[:10]
 
 
-def consultar(url, where="", order="", limite=50):
+
+
+# ======================================================
+# GENERADOR DE CONDICIÓN DE BÚSQUEDA
+# ======================================================
+
+
+def crear_busqueda(campos):
+
+
+    condiciones = []
+
+
+    for palabra in CONFIG["palabras_clave"]:
+
+
+        filtros = []
+
+
+        for campo in campos:
+
+
+            filtros.append(
+
+                f"upper({campo}) like "
+                f"upper('%{palabra}%')"
+
+            )
+
+
+        condiciones.append(
+
+            "("
+            +
+            " OR ".join(filtros)
+            +
+            ")"
+
+        )
+
+
+    return (
+
+        "("
+        +
+        " OR ".join(condiciones)
+        +
+        ")"
+
+    )
+
+
+
+
+# ======================================================
+# CONSULTA GENERAL API
+# ======================================================
+
+
+def consultar_api(
+
+        url,
+
+        where,
+
+        orden="",
+
+        limite=100
+
+):
+
 
     parametros = {
+
 
         "$limit": limite
 
     }
 
 
+
     if where:
+
         parametros["$where"] = where
 
 
-    if order:
-        parametros["$order"] = order
+
+    if orden:
+
+        parametros["$order"] = orden
+
+
 
 
     try:
 
+
         respuesta = requests.get(
+
             url,
+
             params=parametros,
+
             headers=HEADERS,
+
             timeout=40
+
         )
 
 
-        log(f"Consulta: {respuesta.url}")
+
+        log(
+
+            "API: "
+            +
+            respuesta.url
+
+        )
+
 
 
         respuesta.raise_for_status()
 
 
+
         datos = respuesta.json()
 
 
+
         log(
-            f"Registros recibidos: {len(datos)}"
+
+            f"Datos recibidos: {len(datos)}"
+
         )
+
 
 
         return datos
 
 
+
     except Exception as error:
 
+
         log(
-            f"Error consultando API: {error}"
+
+            f"Error API: {error}"
+
         )
 
+
         return []
-
-
-
-# =====================================================
-# CONTRATOS
-# =====================================================
+# ======================================================
+# CONSULTA DE CONTRATOS
+# ======================================================
 
 
 def obtener_contratos():
 
+
     fecha_inicio = (
+
         datetime.now()
+
         -
         timedelta(
             days=CONFIG["dias_contratos"]
         )
+
     ).strftime("%Y-%m-%dT00:00:00")
+
 
 
     condiciones = [
@@ -220,33 +425,46 @@ def obtener_contratos():
     ]
 
 
+
+    # Búsqueda tecnológica en múltiples campos
+
+    busqueda = crear_busqueda(
+
+        [
+
+            "objeto_del_contrato",
+
+            "nombre_entidad",
+
+            "proveedor_adjudicado"
+
+        ]
+
+    )
+
+
+    condiciones.append(busqueda)
+
+
+
     if CONFIG["departamento"]:
 
+
         condiciones.append(
+
             "upper(departamento) like "
+
             f"upper('%{CONFIG['departamento']}%')"
+
         )
 
 
-   if CONFIG["palabras_clave"]:
-
-    palabras = []
-
-    for palabra in CONFIG["palabras_clave"]:
-
-        palabras.append(
-            f"upper(objeto_del_contrato) like upper('%{palabra}%')"
-        )
-
-
-    condiciones.append(
-        "(" + " OR ".join(palabras) + ")"
-    )
 
     where = " AND ".join(condiciones)
 
 
-    return consultar(
+
+    return consultar_api(
 
         API_CONTRATOS,
 
@@ -257,20 +475,31 @@ def obtener_contratos():
         CONFIG["limite"]
 
     )
-  # =====================================================
-# PROCESOS / LICITACIONES
-# =====================================================
+
+
+
+
+
+# ======================================================
+# CONSULTA DE PROCESOS / LICITACIONES
+# ======================================================
 
 
 def obtener_procesos():
 
+
     fecha_inicio = (
+
         datetime.now()
+
         -
+
         timedelta(
             days=CONFIG["dias_procesos"]
         )
+
     ).strftime("%Y-%m-%dT00:00:00")
+
 
 
     condiciones = [
@@ -280,34 +509,44 @@ def obtener_procesos():
     ]
 
 
+
+    busqueda = crear_busqueda(
+
+        [
+
+            "descripci_n_del_procedimiento",
+
+            "nombre_entidad",
+
+            "modalidad_de_contratacion"
+
+        ]
+
+    )
+
+
+    condiciones.append(busqueda)
+
+
+
     if CONFIG["departamento"]:
 
+
         condiciones.append(
+
             "upper(departamento_entidad) like "
+
             f"upper('%{CONFIG['departamento']}%')"
+
         )
 
-
-    if CONFIG["palabras_clave"]:
-
-    palabras = []
-
-    for palabra in CONFIG["palabras_clave"]:
-
-        palabras.append(
-            f"upper(descripci_n_del_procedimiento) like upper('%{palabra}%')"
-        )
-
-
-    condiciones.append(
-        "(" + " OR ".join(palabras) + ")"
-    )
 
 
     where = " AND ".join(condiciones)
 
 
-    return consultar(
+
+    return consultar_api(
 
         API_PROCESOS,
 
@@ -321,9 +560,183 @@ def obtener_procesos():
 
 
 
-# =====================================================
-# GENERADOR HTML
-# =====================================================
+
+
+# ======================================================
+# CLASIFICACIÓN DE OPORTUNIDADES
+# ======================================================
+
+
+def clasificar_oportunidad(texto):
+
+
+    texto = texto.lower()
+
+
+
+    palabras_alta = [
+
+        "ciberseguridad",
+
+        "soc",
+
+        "seguridad informática",
+
+        "biometría",
+
+        "abis",
+
+        "reconocimiento facial",
+
+        "centro de operaciones",
+
+        "centro de control"
+
+    ]
+
+
+
+    palabras_media = [
+
+        "data center",
+
+        "centro de datos",
+
+        "cloud",
+
+        "nube",
+
+        "servidores",
+
+        "infraestructura",
+
+        "redes"
+
+    ]
+
+
+
+    for palabra in palabras_alta:
+
+
+        if palabra in texto:
+
+            return "🔴 Alta"
+
+
+
+    for palabra in palabras_media:
+
+
+        if palabra in texto:
+
+            return "🟠 Media"
+
+
+
+    return "🟢 Normal"
+
+
+
+
+
+# ======================================================
+# PREPARAR DATOS PARA EL INFORME
+# ======================================================
+
+
+def enriquecer_contratos(contratos):
+
+
+    resultado = []
+
+
+
+    for contrato in contratos:
+
+
+        texto = " ".join([
+
+            str(
+                contrato.get(
+                    "objeto_del_contrato",
+                    ""
+                )
+            ),
+
+
+            str(
+                contrato.get(
+                    "nombre_entidad",
+                    ""
+                )
+            )
+
+        ])
+
+
+
+        contrato["prioridad"] = clasificar_oportunidad(texto)
+
+
+
+        resultado.append(
+            contrato
+        )
+
+
+
+    return resultado
+
+
+
+
+
+def enriquecer_procesos(procesos):
+
+
+    resultado = []
+
+
+
+    for proceso in procesos:
+
+
+        texto = " ".join([
+
+            str(
+                proceso.get(
+                    "descripci_n_del_procedimiento",
+                    ""
+                )
+            ),
+
+
+            str(
+                proceso.get(
+                    "nombre_entidad",
+                    ""
+                )
+            )
+
+        ])
+
+
+
+        proceso["prioridad"] = clasificar_oportunidad(texto)
+
+
+
+        resultado.append(
+            proceso
+        )
+
+
+
+    return resultado
+    # ======================================================
+# GENERADOR HTML DEL INFORME
+# ======================================================
 
 
 def generar_html(contratos, procesos):
@@ -349,19 +762,29 @@ def generar_html(contratos, procesos):
 
 
     entidades = len(
+
         set(
+
             c.get(
                 "nombre_entidad",
                 ""
             )
 
             for c in contratos
+
         )
+
     )
 
 
 
+    # ------------------------------
+    # TABLA CONTRATOS
+    # ------------------------------
+
+
     filas_contratos = ""
+
 
 
     for c in contratos:
@@ -371,12 +794,19 @@ def generar_html(contratos, procesos):
 
         <tr>
 
+
+        <td>
+        {c.get('prioridad','')}
+        </td>
+
+
         <td>
         {c.get('nombre_entidad','-')}
         </td>
 
+
         <td>
-        {c.get('objeto_del_contrato','-')[:120]}
+        {c.get('objeto_del_contrato','-')[:130]}
         </td>
 
 
@@ -414,19 +844,30 @@ def generar_html(contratos, procesos):
 
     if not filas_contratos:
 
+
         filas_contratos = """
 
         <tr>
-        <td colspan="5">
-        No hay contratos encontrados
+
+        <td colspan="6">
+        No se encontraron contratos
         </td>
+
         </tr>
 
         """
 
 
 
+
+
+    # ------------------------------
+    # TABLA PROCESOS
+    # ------------------------------
+
+
     filas_procesos = ""
+
 
 
     for p in procesos:
@@ -436,6 +877,12 @@ def generar_html(contratos, procesos):
 
 
         <tr>
+
+
+        <td>
+        {p.get('prioridad','')}
+        </td>
+
 
         <td>
         {p.get(
@@ -449,7 +896,7 @@ def generar_html(contratos, procesos):
         {p.get(
             'descripci_n_del_procedimiento',
             '-'
-        )[:120]}
+        )[:130]}
         </td>
 
 
@@ -473,21 +920,26 @@ def generar_html(contratos, procesos):
 
         </tr>
 
+
         """
 
 
 
     if not filas_procesos:
 
+
         filas_procesos = """
 
         <tr>
-        <td colspan="4">
-        No hay procesos encontrados
+
+        <td colspan="5">
+        No se encontraron procesos
         </td>
+
         </tr>
 
         """
+
 
 
 
@@ -495,11 +947,18 @@ def generar_html(contratos, procesos):
 
 <!DOCTYPE html>
 
-<html>
+<html lang="es">
+
 
 <head>
 
+
 <meta charset="utf-8">
+
+
+<title>
+Monitor SECOP Tecnología
+</title>
 
 
 <style>
@@ -507,52 +966,105 @@ def generar_html(contratos, procesos):
 
 body {{
 
-font-family: Arial;
+font-family:
+Segoe UI,
+Arial,
+sans-serif;
 
-background:#f2f4f8;
+background:#eef2f7;
 
 padding:20px;
 
+color:#222;
+
 }}
+
 
 
 .container {{
 
-background:white;
-
-max-width:1000px;
+max-width:1200px;
 
 margin:auto;
 
+background:white;
+
+border-radius:15px;
+
 padding:30px;
 
-border-radius:10px;
+box-shadow:
+0 5px 25px rgba(0,0,0,.12);
 
 }}
 
 
-h1 {{
 
-color:#123b70;
+.header {{
+
+background:
+linear-gradient(
+135deg,
+#0b3d91,
+#0077b6
+);
+
+color:white;
+
+padding:25px;
+
+border-radius:12px;
 
 }}
+
+
+
+.header h1 {{
+
+margin:0;
+
+}}
+
+
+
+.cards {{
+
+display:flex;
+
+gap:15px;
+
+flex-wrap:wrap;
+
+margin:25px 0;
+
+}}
+
 
 
 .card {{
 
-display:inline-block;
+background:#edf4ff;
 
-background:#eef4ff;
+padding:18px;
 
-padding:15px;
+border-radius:10px;
 
-margin:5px;
-
-border-radius:8px;
+min-width:180px;
 
 text-align:center;
 
 }}
+
+
+
+.card strong {{
+
+font-size:26px;
+
+color:#0b3d91;
+
+}}
+
 
 
 table {{
@@ -561,27 +1073,76 @@ width:100%;
 
 border-collapse:collapse;
 
-margin-top:20px;
+margin-top:15px;
+
+font-size:13px;
 
 }}
 
 
+
 th {{
 
-background:#123b70;
+background:#0b3d91;
 
 color:white;
 
 padding:10px;
 
+text-align:left;
+
 }}
+
 
 
 td {{
 
-padding:8px;
+padding:9px;
 
 border-bottom:1px solid #ddd;
+
+vertical-align:top;
+
+}}
+
+
+
+tr:nth-child(even) {{
+
+background:#f7f9fc;
+
+}}
+
+
+
+.alta {{
+
+color:red;
+
+font-weight:bold;
+
+}}
+
+
+
+.media {{
+
+color:#d97706;
+
+font-weight:bold;
+
+}}
+
+
+.footer {{
+
+margin-top:25px;
+
+font-size:12px;
+
+color:#777;
+
+text-align:center;
 
 }}
 
@@ -592,28 +1153,45 @@ border-bottom:1px solid #ddd;
 </head>
 
 
+
 <body>
+
 
 
 <div class="container">
 
 
+<div class="header">
+
+
 <h1>
-📋 Informe SECOP II
+🛡️ Monitor SECOP II Tecnología
 </h1>
 
 
 <p>
-Generado:
-<b>{fecha_reporte}</b>
+Informe generado:
+{fecha_reporte}
 </p>
 
 
+</div>
+
+
+
+
+<div class="cards">
+
+
 <div class="card">
 
-<b>{len(contratos)}</b>
+<strong>
+{len(contratos)}
+</strong>
+
 <br>
-Contratos
+
+Contratos tecnológicos
 
 </div>
 
@@ -621,9 +1199,13 @@ Contratos
 
 <div class="card">
 
-<b>{len(procesos)}</b>
+<strong>
+{len(procesos)}
+</strong>
+
 <br>
-Procesos
+
+Procesos abiertos
 
 </div>
 
@@ -631,9 +1213,13 @@ Procesos
 
 <div class="card">
 
-<b>{dinero(total_contratos)}</b>
+<strong>
+{dinero(total_contratos)}
+</strong>
+
 <br>
-Valor contratos
+
+Valor contratado
 
 </div>
 
@@ -641,17 +1227,28 @@ Valor contratos
 
 <div class="card">
 
-<b>{entidades}</b>
+<strong>
+{entidades}
+</strong>
+
 <br>
+
 Entidades
 
 </div>
 
 
 
+</div>
+
+
+
+
+
 <h2>
-📝 Contratos recientes
+🔐 Contratos tecnológicos detectados
 </h2>
+
 
 
 <table>
@@ -660,20 +1257,29 @@ Entidades
 <tr>
 
 <th>
+Prioridad
+</th>
+
+
+<th>
 Entidad
 </th>
+
 
 <th>
 Objeto
 </th>
 
+
 <th>
 Valor
 </th>
 
+
 <th>
-Contratista
+Proveedor
 </th>
+
 
 <th>
 Fecha
@@ -682,7 +1288,9 @@ Fecha
 </tr>
 
 
+
 {filas_contratos}
+
 
 
 </table>
@@ -690,9 +1298,12 @@ Fecha
 
 
 
+
 <h2>
-📢 Procesos de contratación
+🚀 Nuevos procesos / oportunidades
 </h2>
+
+
 
 
 <table>
@@ -701,28 +1312,54 @@ Fecha
 <tr>
 
 <th>
+Prioridad
+</th>
+
+
+<th>
 Entidad
 </th>
+
 
 <th>
 Descripción
 </th>
 
+
 <th>
 Presupuesto
 </th>
+
 
 <th>
 Publicación
 </th>
 
+
 </tr>
+
+
 
 
 {filas_procesos}
 
 
+
+
 </table>
+
+
+
+<div class="footer">
+
+Fuente:
+SECOP II · datos.gov.co
+
+<br>
+
+Monitor automático de oportunidades tecnológicas
+
+</div>
 
 
 
@@ -731,6 +1368,7 @@ Publicación
 
 </body>
 
+
 </html>
 
 
@@ -738,30 +1376,46 @@ Publicación
 
 
     return html
-# =====================================================
+    # ======================================================
 # GUARDAR INFORME HTML
-# =====================================================
+# ======================================================
 
 
 def guardar_html(html):
 
+
     nombre = (
-        "informe_secop_"
+
+        "informe_secop_tecnologia_"
+
         +
-        datetime.now().strftime("%Y-%m-%d")
+
+        datetime.now().strftime(
+            "%Y-%m-%d_%H-%M"
+        )
+
         +
+
         ".html"
+
     )
+
 
 
     Path(nombre).write_text(
+
         html,
+
         encoding="utf-8"
+
     )
 
 
+
     log(
-        f"Archivo generado: {nombre}"
+
+        f"Informe guardado: {nombre}"
+
     )
 
 
@@ -769,68 +1423,99 @@ def guardar_html(html):
 
 
 
-# =====================================================
+
+
+# ======================================================
 # ENVÍO DE CORREO
-# =====================================================
+# ======================================================
 
 
-def enviar_correo(html, contratos, procesos):
+def enviar_correo(
+
+        html,
+
+        contratos,
+
+        procesos
+
+):
+
 
 
     remitente = os.environ.get(
+
         "GMAIL_REMITENTE",
+
         ""
+
     )
 
 
     password = os.environ.get(
+
         "GMAIL_PASSWORD",
+
         ""
+
     )
 
 
-    lista_destinos = os.environ.get(
+    destinos = os.environ.get(
+
         "DESTINATARIOS",
+
         ""
+
     )
+
 
 
 
     if not remitente or not password:
 
+
         log(
-            "Faltan credenciales Gmail"
+
+            "❌ Faltan credenciales Gmail"
+
         )
+
 
         return
 
 
 
-    destinatarios = [
 
-        x.strip()
+    lista = [
 
-        for x in lista_destinos.split(",")
+        correo.strip()
 
-        if x.strip()
+        for correo in destinos.split(",")
+
+        if correo.strip()
 
     ]
 
 
 
-    if not destinatarios:
+    if not lista:
+
 
         log(
-            "No hay destinatarios configurados"
+
+            "❌ No existen destinatarios"
+
         )
+
 
         return
 
 
 
+
     asunto = (
 
-        "📋 Informe SECOP II - "
+        "🛡️ Monitor SECOP Tecnología "
 
         +
 
@@ -840,86 +1525,133 @@ def enviar_correo(html, contratos, procesos):
 
         +
 
-        f" | {len(contratos)} contratos "
+        f" | {len(contratos)} contratos"
+
         +
-        f"| {len(procesos)} procesos"
+
+        f" | {len(procesos)} oportunidades"
 
     )
+
 
 
 
     try:
 
 
-        with smtplib.SMTP_SSL(
+
+        servidor = smtplib.SMTP_SSL(
+
             "smtp.gmail.com",
+
             465
-        ) as servidor:
+
+        )
 
 
-            servidor.login(
-                remitente,
-                password
+
+        servidor.login(
+
+            remitente,
+
+            password
+
+        )
+
+
+
+
+        for destino in lista:
+
+
+
+            mensaje = MIMEMultipart(
+
+                "alternative"
+
             )
 
 
 
-            for correo in destinatarios:
+            mensaje["Subject"] = asunto
 
 
-                mensaje = MIMEMultipart(
-                    "alternative"
-                )
+            mensaje["From"] = (
+
+                "Monitor SECOP <"
+
+                +
+
+                remitente
+
+                +
+
+                ">"
+
+            )
 
 
-                mensaje["Subject"] = asunto
-
-                mensaje["From"] = (
-                    "Monitor SECOP <"
-                    +
-                    remitente
-                    +
-                    ">"
-                )
-
-                mensaje["To"] = correo
-
-
-
-                mensaje.attach(
-
-                    MIMEText(
-                        html,
-                        "html",
-                        "utf-8"
-                    )
-
-                )
+            mensaje["To"] = destino
 
 
 
-                servidor.sendmail(
 
-                    remitente,
+            mensaje.attach(
 
-                    correo,
+                MIMEText(
 
-                    mensaje.as_string()
+                    html,
+
+                    "html",
+
+                    "utf-8"
 
                 )
 
+            )
 
-                log(
-                    f"Correo enviado a {correo}"
-                )
+
+
+            servidor.sendmail(
+
+                remitente,
+
+                destino,
+
+                mensaje.as_string()
+
+            )
+
+
+
+            log(
+
+                f"✅ Correo enviado: {destino}"
+
+            )
+
+
+
+
+        servidor.quit()
 
 
 
     except smtplib.SMTPAuthenticationError:
 
 
+
         log(
-            "Error Gmail: revisa la contraseña de aplicación"
+
+            "❌ Error autenticando Gmail"
+
+        )
+
+
+        log(
+
+            "Usa una contraseña de aplicación"
+
         )
 
 
@@ -927,415 +1659,223 @@ def enviar_correo(html, contratos, procesos):
 
 
 
+
     except Exception as error:
 
 
+
         log(
-            f"Error enviando correo: {error}"
+
+            f"❌ Error enviando correo: {error}"
+
         )
 
 
 
-# =====================================================
+
+
+# ======================================================
 # EJECUCIÓN PRINCIPAL
-# =====================================================
+# ======================================================
 
 
 def main():
 
-    log(
-        "=" * 50
-    )
-
-    log(
-        "SECOP II Monitor iniciado"
-    )
 
 
     log(
-        f"Departamento: "
-        f"{CONFIG['departamento'] or 'Todos'}"
+
+        "=" * 60
+
     )
 
 
     log(
-        f"Palabra clave: "
-        f"{CONFIG['palabra_clave'] or 'Todas'}"
+
+        "🛡️ SECOP II Monitor Tecnología iniciado"
+
     )
 
 
     log(
-        "=" * 50
+
+        f"Días contratos: {CONFIG['dias_contratos']}"
+
     )
+
+
+    log(
+
+        f"Días procesos: {CONFIG['dias_procesos']}"
+
+    )
+
+
+    log(
+
+        f"Palabras clave activas: {len(CONFIG['palabras_clave'])}"
+
+    )
+
+
+    log(
+
+        "=" * 60
+
+    )
+
+
+
+
+    # ----------------------------
+    # CONTRATOS
+    # ----------------------------
 
 
 
     log(
-        "Consultando contratos..."
+
+        "Buscando contratos tecnológicos..."
+
     )
+
 
 
     contratos = obtener_contratos()
 
 
 
+    contratos = enriquecer_contratos(
+
+        contratos
+
+    )
+
+
+
     log(
+
         f"Contratos encontrados: {len(contratos)}"
+
     )
+
+
+
+
+    # ----------------------------
+    # PROCESOS
+    # ----------------------------
 
 
 
     log(
-        "Consultando procesos..."
+
+        "Buscando oportunidades..."
+
     )
+
 
 
     procesos = obtener_procesos()
 
 
 
+    procesos = enriquecer_procesos(
+
+        procesos
+
+    )
+
+
+
     log(
+
         f"Procesos encontrados: {len(procesos)}"
+
     )
+
+
+
+
+    # ----------------------------
+    # HTML
+    # ----------------------------
 
 
 
     log(
-        "Generando informe..."
+
+        "Generando informe HTML..."
+
     )
+
 
 
     html = generar_html(
+
         contratos,
+
         procesos
+
     )
 
 
 
-    guardar_html(html)
+    guardar_html(
+
+        html
+
+    )
+
+
+
+
+    # ----------------------------
+    # EMAIL
+    # ----------------------------
 
 
 
     log(
-        "Enviando correo..."
+
+        "Enviando informe..."
+
     )
+
 
 
     enviar_correo(
+
         html,
+
         contratos,
+
         procesos
+
+    )
+
+
+
+
+    log(
+
+        "✅ Proceso terminado correctamente"
+
     )
 
 
 
     log(
-        "Proceso terminado correctamente"
+
+        "=" * 60
+
     )
+
+
 
 
 
 if __name__ == "__main__":
 
-    main()
-# =====================================================
-# GUARDAR INFORME HTML
-# =====================================================
-
-
-def guardar_html(html):
-
-    nombre = (
-        "informe_secop_"
-        +
-        datetime.now().strftime("%Y-%m-%d")
-        +
-        ".html"
-    )
-
-
-    Path(nombre).write_text(
-        html,
-        encoding="utf-8"
-    )
-
-
-    log(
-        f"Archivo generado: {nombre}"
-    )
-
-
-    return nombre
-
-
-
-# =====================================================
-# ENVÍO DE CORREO
-# =====================================================
-
-
-def enviar_correo(html, contratos, procesos):
-
-
-    remitente = os.environ.get(
-        "GMAIL_REMITENTE",
-        ""
-    )
-
-
-    password = os.environ.get(
-        "GMAIL_PASSWORD",
-        ""
-    )
-
-
-    lista_destinos = os.environ.get(
-        "DESTINATARIOS",
-        ""
-    )
-
-
-
-    if not remitente or not password:
-
-        log(
-            "Faltan credenciales Gmail"
-        )
-
-        return
-
-
-
-    destinatarios = [
-
-        x.strip()
-
-        for x in lista_destinos.split(",")
-
-        if x.strip()
-
-    ]
-
-
-
-    if not destinatarios:
-
-        log(
-            "No hay destinatarios configurados"
-        )
-
-        return
-
-
-
-    asunto = (
-
-        "📋 Informe SECOP II - "
-
-        +
-
-        datetime.now().strftime(
-            "%d/%m/%Y"
-        )
-
-        +
-
-        f" | {len(contratos)} contratos "
-        +
-        f"| {len(procesos)} procesos"
-
-    )
-
-
-
-    try:
-
-
-        with smtplib.SMTP_SSL(
-            "smtp.gmail.com",
-            465
-        ) as servidor:
-
-
-            servidor.login(
-                remitente,
-                password
-            )
-
-
-
-            for correo in destinatarios:
-
-
-                mensaje = MIMEMultipart(
-                    "alternative"
-                )
-
-
-                mensaje["Subject"] = asunto
-
-                mensaje["From"] = (
-                    "Monitor SECOP <"
-                    +
-                    remitente
-                    +
-                    ">"
-                )
-
-                mensaje["To"] = correo
-
-
-
-                mensaje.attach(
-
-                    MIMEText(
-                        html,
-                        "html",
-                        "utf-8"
-                    )
-
-                )
-
-
-
-                servidor.sendmail(
-
-                    remitente,
-
-                    correo,
-
-                    mensaje.as_string()
-
-                )
-
-
-                log(
-                    f"Correo enviado a {correo}"
-                )
-
-
-
-    except smtplib.SMTPAuthenticationError:
-
-
-        log(
-            "Error Gmail: revisa la contraseña de aplicación"
-        )
-
-
-        sys.exit(1)
-
-
-
-    except Exception as error:
-
-
-        log(
-            f"Error enviando correo: {error}"
-        )
-
-
-
-# =====================================================
-# EJECUCIÓN PRINCIPAL
-# =====================================================
-
-
-def main():
-
-    log(
-        "=" * 50
-    )
-
-    log(
-        "SECOP II Monitor iniciado"
-    )
-
-
-    log(
-        f"Departamento: "
-        f"{CONFIG['departamento'] or 'Todos'}"
-    )
-
-
-    log(
-        f"Palabra clave: "
-        f"{CONFIG['palabra_clave'] or 'Todas'}"
-    )
-
-
-    log(
-        "=" * 50
-    )
-
-
-
-    log(
-        "Consultando contratos..."
-    )
-
-
-    contratos = obtener_contratos()
-
-
-
-    log(
-        f"Contratos encontrados: {len(contratos)}"
-    )
-
-
-
-    log(
-        "Consultando procesos..."
-    )
-
-
-    procesos = obtener_procesos()
-
-
-
-    log(
-        f"Procesos encontrados: {len(procesos)}"
-    )
-
-
-
-    log(
-        "Generando informe..."
-    )
-
-
-    html = generar_html(
-        contratos,
-        procesos
-    )
-
-
-
-    guardar_html(html)
-
-
-
-    log(
-        "Enviando correo..."
-    )
-
-
-    enviar_correo(
-        html,
-        contratos,
-        procesos
-    )
-
-
-
-    log(
-        "Proceso terminado correctamente"
-    )
-
-
-
-if __name__ == "__main__":
 
     main()
-
