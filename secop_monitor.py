@@ -31,8 +31,8 @@ except ImportError:
 FILTROS = {
     "departamento": "",     # Ej: "Cundinamarca" — vacío = toda Colombia
     "sector":       "",     # Ej: "salud", "obras", "tecnología" — vacío = todos
-    "dias":         1,      # Contratos firmados en los últimos N días
-    "dias_licit":   30,     # Licitaciones publicadas en los últimos N días
+    "dias":         10,      # Contratos firmados en los últimos N días
+    "dias_licit":   90,     # Licitaciones publicadas en los últimos N días
     "limite":       50,     # Máx. registros por consulta
 }
 
