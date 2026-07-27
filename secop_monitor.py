@@ -33,7 +33,42 @@ CONFIG = {
 
     # Filtros generales
     "departamento": "",
-    "palabra_clave": "",
+    "palabras_clave": [
+    "ciberseguridad",
+    "seguridad informática",
+    "seguridad digital",
+    "SOC",
+    "centro de operaciones de seguridad",
+    "centro de control",
+    "monitoreo",
+    "videovigilancia",
+    "CCTV",
+    "data center",
+    "centro de datos",
+    "nube",
+    "cloud",
+    "computación en la nube",
+    "AWS",
+    "Azure",
+    "Google Cloud",
+    "biometría",
+    "biometrico",
+    "ABIS",
+    "identificación biométrica",
+    "reconocimiento facial",
+    "inteligencia artificial",
+    "IA",
+    "machine learning",
+    "analítica de datos",
+    "big data",
+    "software",
+    "hardware",
+    "redes",
+    "telecomunicaciones",
+    "infraestructura tecnológica",
+    "TI",
+    "tecnologías de información"
+],
 
     # Días de búsqueda
     "dias_contratos": 15,
@@ -193,13 +228,20 @@ def obtener_contratos():
         )
 
 
-    if CONFIG["palabra_clave"]:
+   if CONFIG["palabras_clave"]:
 
-        condiciones.append(
-            "upper(objeto_del_contrato) like "
-            f"upper('%{CONFIG['palabra_clave']}%')"
+    palabras = []
+
+    for palabra in CONFIG["palabras_clave"]:
+
+        palabras.append(
+            f"upper(objeto_del_contrato) like upper('%{palabra}%')"
         )
 
+
+    condiciones.append(
+        "(" + " OR ".join(palabras) + ")"
+    )
 
     where = " AND ".join(condiciones)
 
@@ -246,12 +288,20 @@ def obtener_procesos():
         )
 
 
-    if CONFIG["palabra_clave"]:
+    if CONFIG["palabras_clave"]:
 
-        condiciones.append(
-            "upper(descripci_n_del_procedimiento) like "
-            f"upper('%{CONFIG['palabra_clave']}%')"
+    palabras = []
+
+    for palabra in CONFIG["palabras_clave"]:
+
+        palabras.append(
+            f"upper(descripci_n_del_procedimiento) like upper('%{palabra}%')"
         )
+
+
+    condiciones.append(
+        "(" + " OR ".join(palabras) + ")"
+    )
 
 
     where = " AND ".join(condiciones)
