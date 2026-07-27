@@ -1,0 +1,36 @@
+name: SECOP Monitor Diario
+
+on:
+  schedule:
+    - cron: '0 12 * * 1-5'   # Lunes a viernes a las 7:00 AM Colombia (UTC-5 = 12:00 UTC)
+  workflow_dispatch:          # También permite ejecutarlo manualmente desde GitHub
+
+jobs:
+  generar-informe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests
+
+      - name: Ejecutar monitor SECOP
+        env:
+          GMAIL_REMITENTE: ${{ secrets.GMAIL_REMITENTE }}
+          GMAIL_PASSWORD:  ${{ secrets.GMAIL_PASSWORD }}
+          DESTINATARIOS:   ${{ secrets.DESTINATARIOS }}
+        run: python secop_monitor.py
+
+      - name: Guardar informe HTML como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-secop-${{ github.run_number }}
+          path: informe_secop_*.html
+          retention-days: 30
