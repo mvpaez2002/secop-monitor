@@ -11,88 +11,150 @@ from email.mime.text import MIMEText
 
 
 # ==========================================================
-# CONFIGURACIÓN
+# CONFIGURACIÓN GENERAL
 # ==========================================================
 
 API_SECOP = "https://www.datos.gov.co/resource/p6dx-8zbt.json"
 
-DIAS_BUSQUEDA = 120
+DIAS_BUSQUEDA = 180
 
-MAX_RESULTADOS_API = 500
+MAX_RESULTADOS_API = 1000
 
-MAX_INFORME = 100
+MAX_INFORME = 150
 
 
 
 # ==========================================================
-# PALABRAS DE INTERÉS
+# PALABRAS CLAVE SEGURIDAD TECNOLÓGICA
 # ==========================================================
 
 PALABRAS_CLAVE = [
 
+    # SOC / SIEM / Ciberseguridad
+    "soc",
+    "centro de operaciones de seguridad",
+    "centro operaciones seguridad",
+    "siem",
     "ciberseguridad",
     "seguridad informática",
     "seguridad informatica",
     "seguridad de la información",
-    "seguridad de la informacion",
+    "seguridad informacion",
+    "monitoreo seguridad",
+    "correlación de eventos",
+    "gestión de eventos",
+    "respuesta incidentes",
 
+
+    # Centros de control
+    "centro de control",
+    "centro integrado de control",
+    "centro integrado de operaciones",
+    "centro de monitoreo",
+    "sala de monitoreo",
+    "sala de control",
+    "centro de comando",
+    "centro comando",
+    "c4",
+    "c5",
+    "c2",
+
+
+    # CCTV / Video seguridad
+    "cctv",
+    "circuito cerrado televisión",
+    "circuito cerrado de television",
+    "videovigilancia",
+    "video vigilancia",
+    "cámaras",
+    "camaras",
+    "camara ip",
+    "cámara ip",
+    "video analítica",
+    "analitica de video",
+    "analítica de video",
+    "vms",
+    "grabador",
+    "nvr",
+    "dvr",
+
+
+    # Fabricantes seguridad electrónica
+    "hikvision",
+    "dahua",
+    "axis",
+    "bosch",
+    "milestone",
+    "genetec",
+    "avigilon",
+    "hanwha",
+
+
+    # Control acceso
+    "control de acceso",
+    "control acceso",
+    "biometría",
+    "biometria",
+    "huella digital",
+    "reconocimiento facial",
+    "facial",
+    "torniquetes",
+    "lector biométrico",
+
+
+    # Redes seguridad
     "firewall",
     "fortinet",
+    "fortigate",
     "checkpoint",
     "palo alto",
+    "sonicwall",
+    "proxy",
+    "vpn",
+    "ips",
+    "ids",
 
-    "soc",
-    "siem",
 
-    "monitoreo",
-    "centro de control",
-    "centro de operaciones",
-
-    "cctv",
-    "videovigilancia",
-
-    "biometria",
-    "biometría",
-    "huella",
-    "facial",
-    "reconocimiento",
-
-    "abis",
-    "verilook",
-    "neurotechnology",
-
+    # Infraestructura
     "data center",
     "centro de datos",
-
     "servidores",
     "storage",
     "almacenamiento",
+    "backup",
+    "respaldo",
+    "san",
+    "nas",
 
+
+    # Cloud
     "cloud",
     "nube",
     "aws",
     "azure",
-
-    "virtualizacion",
+    "google cloud",
     "virtualización",
+    "virtualizacion",
 
-    "backup",
-    "respaldo",
 
+    # Redes
     "redes",
     "switch",
     "router",
+    "wifi",
+    "lan",
+    "wan",
 
+
+    # Software
     "software",
-
-    "certificado digital",
+    "licenciamiento",
     "firma digital",
-
-    "inteligencia artificial",
-    "analitica",
-    "analítica"
+    "certificado digital",
+    "gestión documental",
 
 ]
+
 
 
 # ==========================================================
@@ -103,9 +165,9 @@ CODIGOS_UNSPSC = {
 
     "4323": "Software",
 
-    "432332": "Software de seguridad",
+    "432332": "Software seguridad",
 
-    "4322": "Redes y comunicaciones",
+    "4322": "Redes comunicaciones",
 
     "4321": "Hardware",
 
@@ -115,7 +177,9 @@ CODIGOS_UNSPSC = {
 
     "4617": "Seguridad electrónica",
 
-    "4618": "Control de acceso"
+    "461716": "Videovigilancia",
+
+    "4618": "Control acceso"
 
 }
 
@@ -135,10 +199,11 @@ def log(texto):
 
 
 # ==========================================================
-# CONSULTA API SECOP
+# CONSULTA SECOP
 # ==========================================================
 
 def consultar_secop():
+
 
     fecha = (
 
@@ -151,33 +216,61 @@ def consultar_secop():
     )
 
 
+
     consultas = [
 
         "seguridad",
-        "software",
-        "digital",
-        "tecnologia",
-        "sistema",
+
+        "ciberseguridad",
+
+        "soc",
+
+        "siem",
+
+        "monitoreo",
+
+        "centro control",
+
+        "cctv",
+
+        "camaras",
+
+        "videovigilancia",
+
+        "firewall",
+
         "redes",
-        "datos",
-        "biometria",
+
+        "software",
+
+        "servidores",
+
         "cloud",
-        "servidores"
+
+        "biometria",
+
+        "control acceso",
+
+        "data center"
 
     ]
 
 
-    todos = []
+
+    resultados = []
+
 
 
     for palabra in consultas:
 
+
         log(
-            f"Consultando {palabra}"
+            f"Buscando: {palabra}"
         )
 
 
         try:
+
 
             respuesta = requests.get(
 
@@ -194,15 +287,18 @@ def consultar_secop():
 
                 },
 
-                timeout=60
+                timeout=90
 
             )
+
 
 
             respuesta.raise_for_status()
 
 
+
             datos = respuesta.json()
+
 
 
             log(
@@ -210,32 +306,39 @@ def consultar_secop():
             )
 
 
-            todos.extend(datos)
+
+            resultados.extend(datos)
 
 
-        except Exception as error:
+
+        except Exception as e:
+
 
             log(
-                f"Error {palabra}: {error}"
+                f"Error {palabra}: {e}"
             )
 
 
-    return eliminar_duplicados(todos)
+
+    return eliminar_duplicados(resultados)
 
 
 
 # ==========================================================
-# ELIMINAR REPETIDOS
+# QUITAR DUPLICADOS
 # ==========================================================
 
 def eliminar_duplicados(datos):
 
+
     vistos = set()
 
-    resultado = []
+    salida = []
+
 
 
     for item in datos:
+
 
         identificador = (
 
@@ -244,66 +347,67 @@ def eliminar_duplicados(datos):
                 ""
             )
 
+            or
+
+            item.get(
+                "referencia_del_proceso",
+                ""
+            )
+
         )
 
 
+
         if identificador not in vistos:
+
 
             vistos.add(
                 identificador
             )
 
-            resultado.append(
+
+            salida.append(
                 item
             )
 
 
-    return resultado
+
+    return salida
 
 
 
 # ==========================================================
-# CALCULAR RELEVANCIA
+# ANALIZAR OPORTUNIDAD
 # ==========================================================
 
 def analizar_registro(registro):
 
+
     texto = " ".join([
 
-        str(
-            registro.get(
-                "nombre_del_procedimiento",
-                ""
-            )
-        ),
 
-        str(
-            registro.get(
-                "descripci_n_del_procedimiento",
-                ""
-            )
-        ),
+        str(registro.get(
+            "nombre_del_procedimiento",
+            ""
+        )),
 
-        str(
-            registro.get(
-                "codigo_principal_de_categoria",
-                ""
-            )
-        ),
 
-        str(
-            registro.get(
-                "categorias_adicionales",
-                ""
-            )
-        ),
+        str(registro.get(
+            "descripci_n_del_procedimiento",
+            ""
+        )),
 
-        str(
-            registro.get(
-                "nombre_del_proveedor",
-                ""
-            )
-        )
+
+        str(registro.get(
+            "codigo_principal_de_categoria",
+            ""
+        )),
+
+
+        str(registro.get(
+            "categorias_adicionales",
+            ""
+        ))
 
     ]).lower()
 
@@ -334,24 +438,43 @@ def analizar_registro(registro):
         registro.get(
             "codigo_principal_de_categoria",
             ""
-
         )
 
-    ).lower()
+    )
 
 
 
-    for clave, descripcion in CODIGOS_UNSPSC.items():
+    for clave, nombre in CODIGOS_UNSPSC.items():
 
 
         if clave in codigo:
 
 
-            puntos += 20
+            puntos += 25
 
             motivos.append(
-                descripcion
+                nombre
             )
+
+
+
+    # Prioridad alta
+
+    if "cctv" in texto or "videovigilancia" in texto:
+
+        puntos += 20
+
+
+
+    if "soc" in texto or "siem" in texto:
+
+        puntos += 30
+
+
+
+    if "centro de control" in texto:
+
+        puntos += 25
 
 
 
@@ -360,12 +483,14 @@ def analizar_registro(registro):
 
 
 # ==========================================================
-# FILTRAR OPORTUNIDADES
+# FILTRAR
 # ==========================================================
 
 def filtrar(datos):
 
+
     encontrados = []
+
 
 
     for registro in datos:
@@ -376,13 +501,13 @@ def filtrar(datos):
         )
 
 
-        if puntos >= 20:
+        if puntos >= 30:
 
 
             registro["puntaje"] = puntos
 
-            registro["motivos"] = (
-                ", ".join(motivos)
+            registro["motivos"] = ", ".join(
+                motivos
             )
 
 
@@ -399,12 +524,6 @@ def filtrar(datos):
         reverse=True
 
     )
-
-
-    return encontrados
-
-
-
 # ==========================================================
 # FORMATO DINERO
 # ==========================================================
@@ -415,9 +534,7 @@ def dinero(valor):
 
         numero = float(valor)
 
-        return (
-            "$ {:,.0f}".format(numero)
-        )
+        return "$ {:,.0f}".format(numero)
 
     except:
 
@@ -426,13 +543,31 @@ def dinero(valor):
 
 
 # ==========================================================
-# CREAR HTML
+# NIVEL DE ALERTA
+# ==========================================================
+
+def nivel(puntos):
+
+    if puntos >= 80:
+        return "CRÍTICO"
+
+    elif puntos >= 50:
+        return "ALTO"
+
+    else:
+        return "MEDIO"
+
+
+
+# ==========================================================
+# GENERAR HTML DASHBOARD
 # ==========================================================
 
 def generar_html(datos):
 
 
     filas = ""
+
 
 
     for r in datos[:MAX_INFORME]:
@@ -468,40 +603,125 @@ def generar_html(datos):
         )
 
 
+        puntaje = r.get(
+            "puntaje",
+            0
+        )
+
+
+
+        color = (
+
+            "#dc2626"
+            if puntaje >= 80
+
+            else
+
+            "#f59e0b"
+            if puntaje >= 50
+
+            else
+
+            "#2563eb"
+
+        )
+
+
+
+        link = ""
+
+        url = r.get(
+            "urlproceso",
+            ""
+        )
+
+
+        if isinstance(url, dict):
+
+            link = url.get(
+                "url",
+                ""
+            )
+
+
+
         filas += f"""
 
 <tr>
 
-<td>{html.escape(str(entidad))}</td>
-
-<td>{html.escape(str(descripcion)[:250])}</td>
-
-<td>{dinero(valor)}</td>
-
-<td>{r.get('codigo_principal_de_categoria','')}</td>
-
 <td>
-{r.get('puntaje')} %
-<br>
-{r.get('motivos')}
+<b>{html.escape(str(entidad))}</b>
 </td>
 
+
+<td>
+{html.escape(str(descripcion)[:350])}
+</td>
+
+
 <td>
 
-<a href="{r.get('urlproceso',{}).get('url','')}">
+{dinero(valor)}
 
-Ver proceso
+</td>
+
+
+
+<td>
+
+<span style="
+background:{color};
+color:white;
+padding:5px 10px;
+border-radius:15px;
+">
+
+{puntaje} puntos
+
+</span>
+
+<br>
+
+<small>
+
+{nivel(puntaje)}
+
+</small>
+
+</td>
+
+
+
+<td>
+
+{html.escape(
+str(r.get("motivos",""))
+)}
+
+</td>
+
+
+
+<td>
+
+<a target="_blank"
+href="{link}">
+
+Abrir SECOP
 
 </a>
 
 </td>
+
 
 </tr>
 
 """
 
 
+
     if not filas:
+
 
         filas = """
 
@@ -509,7 +729,9 @@ Ver proceso
 
 <td colspan="6">
 
+<h3>
 No se encontraron oportunidades
+</h3>
 
 </td>
 
@@ -519,59 +741,201 @@ No se encontraron oportunidades
 
 
 
+    fecha = datetime.now().strftime(
+        "%d/%m/%Y %H:%M"
+    )
+
+
+
     return f"""
+
+<!DOCTYPE html>
 
 <html>
 
 <head>
 
-<meta charset="utf-8">
+<meta charset="UTF-8">
+
+
+<title>
+Monitor SECOP Seguridad
+</title>
+
 
 
 <style>
 
+
 body {{
 
-font-family:Arial;
+margin:0;
 
-background:#f1f5f9;
+font-family:
+Segoe UI,Arial;
+
+background:#eef2ff;
+
+color:#1e293b;
+
+}}
+
+
+
+.header {{
+
+background:
+linear-gradient(
+135deg,
+#020617,
+#1d4ed8
+);
+
+color:white;
+
+padding:35px;
+
+}}
+
+
+
+.header h1 {{
+
+margin:0;
+
+font-size:32px;
+
+}}
+
+
+
+.cards {{
+
+display:flex;
+
+gap:20px;
+
+padding:25px;
+
+flex-wrap:wrap;
+
+}}
+
+
+
+.card {{
+
+background:white;
 
 padding:20px;
 
+border-radius:15px;
+
+box-shadow:
+0 5px 15px #0002;
+
+min-width:220px;
+
 }}
+
+
+
+.card h2 {{
+
+margin:0;
+
+font-size:32px;
+
+color:#1d4ed8;
+
+}}
+
+
+
+.container {{
+
+padding:25px;
+
+}}
+
 
 
 table {{
 
 width:100%;
 
-border-collapse:collapse;
-
 background:white;
 
+border-collapse:collapse;
+
+border-radius:15px;
+
+overflow:hidden;
+
+box-shadow:
+0 5px 20px #0002;
+
 }}
+
 
 
 th {{
 
-background:#003566;
+background:#0f172a;
 
 color:white;
 
-padding:10px;
+padding:14px;
+
+text-align:left;
 
 }}
+
 
 
 td {{
 
-padding:8px;
+padding:12px;
 
-border-bottom:1px solid #ddd;
+border-bottom:
+1px solid #e2e8f0;
 
-font-size:12px;
+font-size:13px;
 
 }}
+
+
+
+tr:hover {{
+
+background:#f8fafc;
+
+}}
+
+
+
+a {{
+
+color:#2563eb;
+
+font-weight:bold;
+
+}}
+
+
+.badge {{
+
+background:#16a34a;
+
+color:white;
+
+padding:8px 15px;
+
+border-radius:20px;
+
+}}
+
+
 
 </style>
 
@@ -582,21 +946,94 @@ font-size:12px;
 <body>
 
 
+
+<div class="header">
+
+
 <h1>
-🛡️ Monitor SECOP Tecnología
+🛡️ Monitor SECOP Seguridad Tecnológica
 </h1>
 
 
 <p>
-Fecha:
-{datetime.now()}
+Centros de control | SOC | SIEM | CCTV | Ciberseguridad | Infraestructura TI
 </p>
 
 
 <p>
-Resultados:
-{len(datos)}
+Generado:
+{fecha}
+
 </p>
+
+
+</div>
+
+
+
+<div class="cards">
+
+
+<div class="card">
+
+<h2>
+{len(datos)}
+</h2>
+
+<p>
+Oportunidades detectadas
+</p>
+
+</div>
+
+
+
+<div class="card">
+
+<h2>
+{sum(1 for x in datos if x.get("puntaje",0)>=80)}
+</h2>
+
+<p>
+Alertas críticas
+</p>
+
+</div>
+
+
+
+<div class="card">
+
+<h2>
+{sum(1 for x in datos if "cctv" in str(x.get("motivos","")).lower())}
+</h2>
+
+<p>
+CCTV / Video seguridad
+</p>
+
+</div>
+
+
+
+<div class="card">
+
+<h2>
+{sum(1 for x in datos if "soc" in str(x.get("motivos","")).lower())}
+</h2>
+
+<p>
+SOC / SIEM
+</p>
+
+</div>
+
+
+</div>
+
+
+
+<div class="container">
 
 
 <table>
@@ -604,17 +1041,29 @@ Resultados:
 
 <tr>
 
-<th>Entidad</th>
+<th>
+Entidad
+</th>
 
-<th>Descripción</th>
+<th>
+Descripción
+</th>
 
-<th>Valor</th>
+<th>
+Valor
+</th>
 
-<th>UNSPSC</th>
+<th>
+Nivel
+</th>
 
-<th>Detectado</th>
+<th>
+Detectado
+</th>
 
-<th>Link</th>
+<th>
+Enlace
+</th>
 
 </tr>
 
@@ -623,6 +1072,10 @@ Resultados:
 
 
 </table>
+
+
+</div>
+
 
 
 </body>
@@ -634,15 +1087,15 @@ Resultados:
 
 
 # ==========================================================
-# GUARDAR HTML
+# GUARDAR INFORME
 # ==========================================================
 
-def guardar(html_text):
+def guardar_archivo(contenido):
 
 
     nombre = (
 
-        "Informe_SECOP_"
+        "SECOP_SEGURIDAD_"
 
         +
 
@@ -657,9 +1110,10 @@ def guardar(html_text):
     )
 
 
+
     Path(nombre).write_text(
 
-        html_text,
+        contenido,
 
         encoding="utf-8"
 
@@ -667,13 +1121,13 @@ def guardar(html_text):
 
 
     log(
-        f"Archivo creado {nombre}"
+        f"HTML generado: {nombre}"
     )
 
 
 
 # ==========================================================
-# ENVIAR CORREO
+# ENVIO EMAIL
 # ==========================================================
 
 def enviar_correo(html_text):
@@ -694,10 +1148,12 @@ def enviar_correo(html_text):
     )
 
 
+
     if not remitente or not password or not destinatarios:
 
+
         log(
-            "Faltan secretos Gmail"
+            "Correo no configurado"
         )
 
         return
@@ -713,6 +1169,7 @@ def enviar_correo(html_text):
     )
 
 
+
     servidor.login(
 
         remitente,
@@ -723,7 +1180,7 @@ def enviar_correo(html_text):
 
 
 
-    for correo in destinatarios.split(","):
+    for destino in destinatarios.split(","):
 
 
         mensaje = MIMEMultipart(
@@ -733,14 +1190,14 @@ def enviar_correo(html_text):
 
         mensaje["Subject"] = (
 
-            "🛡️ Informe SECOP Tecnología"
+            "🛡️ Alertas SECOP Seguridad Tecnología"
 
         )
 
 
         mensaje["From"] = remitente
 
-        mensaje["To"] = correo.strip()
+        mensaje["To"] = destino.strip()
 
 
 
@@ -759,19 +1216,21 @@ def enviar_correo(html_text):
         )
 
 
+
         servidor.sendmail(
 
             remitente,
 
-            correo.strip(),
+            destino.strip(),
 
             mensaje.as_string()
 
         )
 
 
+
         log(
-            f"Enviado {correo}"
+            f"Correo enviado: {destino}"
         )
 
 
@@ -781,10 +1240,11 @@ def enviar_correo(html_text):
 
 
 # ==========================================================
-# EJECUCIÓN
+# MAIN
 # ==========================================================
 
 def main():
+
 
     log(
         "INICIANDO MONITOR SECOP"
@@ -794,17 +1254,23 @@ def main():
     datos = consultar_secop()
 
 
+
     log(
-        f"Total recibidos: {len(datos)}"
+        f"Registros encontrados: {len(datos)}"
     )
 
 
-    oportunidades = filtrar(datos)
+
+    oportunidades = filtrar(
+        datos
+    )
+
 
 
     log(
-        f"Oportunidades detectadas: {len(oportunidades)}"
+        f"Oportunidades: {len(oportunidades)}"
     )
+
 
 
     informe = generar_html(
@@ -812,9 +1278,11 @@ def main():
     )
 
 
-    guardar(
+
+    guardar_archivo(
         informe
     )
+
 
 
     enviar_correo(
@@ -822,12 +1290,17 @@ def main():
     )
 
 
+
     log(
-        "FINALIZADO"
+        "PROCESO FINALIZADO"
     )
+
 
 
 
 if __name__ == "__main__":
 
     main()
+
+
+    return encontrados
