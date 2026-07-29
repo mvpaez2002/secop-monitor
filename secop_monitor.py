@@ -18,7 +18,7 @@ API_SECOP = "https://www.datos.gov.co/resource/p6dx-8zbt.json"
 
 # Ventana de búsqueda: cuántos días hacia atrás se consulta desde "hoy".
 # 1 = solo lo publicado el día de la corrida (uso diario / cron diario).
-DIAS_BUSQUEDA = 1
+DIAS_BUSQUEDA = 90
 
 MAX_RESULTADOS_API = 1000
 
