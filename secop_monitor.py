@@ -17,7 +17,6 @@ from email.mime.text import MIMEText
 API_SECOP = "https://www.datos.gov.co/resource/p6dx-8zbt.json"
 
 # Ventana de búsqueda: cuántos días hacia atrás se consulta desde "hoy".
-# 1 = solo lo publicado el día de la corrida (uso diario / cron diario).
 DIAS_BUSQUEDA = 90
 
 MAX_RESULTADOS_API = 1000
@@ -207,9 +206,6 @@ def log(texto):
 def consultar_secop():
 
 
-    # Se parte de la medianoche de HOY (no de "ahora mismo"), y se resta
-    # (DIAS_BUSQUEDA - 1) días. Con DIAS_BUSQUEDA = 1 esto da exactamente
-    # el día de hoy completo, que es lo que se necesita para una corrida diaria.
     inicio_hoy = datetime.now().replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -294,9 +290,6 @@ def consultar_secop():
                     "$where":
                     f"fecha_de_publicacion_del >= '{fecha}'",
 
-                    # Orden determinístico: sin esto, Socrata puede devolver
-                    # un subconjunto distinto en cada corrida cuando hay más
-                    # de MAX_RESULTADOS_API resultados posibles.
                     "$order":
                     "fecha_de_publicacion_del DESC, id_del_proceso"
 
@@ -498,7 +491,7 @@ def analizar_registro(registro):
 
 
 # ==========================================================
-# FILTRAR
+# FILTRAR POR PALABRAS CLAVE
 # ==========================================================
 
 def filtrar(datos):
@@ -544,6 +537,66 @@ def filtrar(datos):
 
 
 # ==========================================================
+# FILTRAR: EXCLUIR LOS YA CONTRATADOS O LOS QUE YA
+# SE PRESENTARON (plazo de ofertas vencido)
+# ==========================================================
+
+def sigue_abierto(registro):
+
+    adjudicado = str(
+        registro.get("adjudicado", "")
+    ).strip().lower()
+
+    estado = str(
+        registro.get("estado_del_procedimiento", "")
+    ).strip().lower()
+
+    # Ya contratado / adjudicado -> se excluye
+    if adjudicado == "si":
+
+        return False
+
+    if estado in ("adjudicado", "celebrado"):
+
+        return False
+
+
+    fecha_limite = registro.get("fecha_de_recepcion_de", "")
+
+    if fecha_limite:
+
+        try:
+
+            limite = datetime.strptime(
+                str(fecha_limite)[:19],
+                "%Y-%m-%dT%H:%M:%S"
+            )
+
+            if limite < datetime.now():
+
+                # El plazo para presentar ofertas ya pasó -> se excluye
+                return False
+
+        except Exception:
+
+            pass
+
+
+    return True
+
+
+
+def filtrar_no_presentados(datos):
+
+    return [
+        registro
+        for registro in datos
+        if sigue_abierto(registro)
+    ]
+
+
+
+# ==========================================================
 # FORMATO DINERO
 # ==========================================================
 
@@ -556,6 +609,29 @@ def dinero(valor):
         return "$ {:,.0f}".format(numero)
 
     except:
+
+        return "-"
+
+
+
+# ==========================================================
+# FORMATO FECHA
+# ==========================================================
+
+def formatear_fecha(valor):
+
+    if not valor:
+
+        return "-"
+
+    try:
+
+        return datetime.strptime(
+            str(valor)[:19],
+            "%Y-%m-%dT%H:%M:%S"
+        ).strftime("%d/%m/%Y")
+
+    except Exception:
 
         return "-"
 
@@ -628,6 +704,27 @@ def generar_html(datos):
         )
 
 
+        fecha_publicacion = formatear_fecha(
+            r.get("fecha_de_publicacion_del", "")
+        )
+
+
+        fecha_pliegos = formatear_fecha(
+            r.get("fecha_de_recepcion_de", "")
+        )
+
+
+        estado_o_fase = (
+
+            r.get("estado_del_procedimiento", "")
+
+            or
+
+            r.get("fase", "-")
+
+        )
+
+
 
         color = (
 
@@ -670,10 +767,19 @@ def generar_html(datos):
     <b>{html.escape(str(entidad))}</b>
   </td>
   <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
-    {html.escape(str(descripcion)[:350])}
+    {html.escape(str(descripcion)[:300])}
   </td>
   <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
     {dinero(valor)}
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;white-space:nowrap;">
+    {fecha_publicacion}
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;white-space:nowrap;">
+    {fecha_pliegos}
+  </td>
+  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
+    {html.escape(str(estado_o_fase))}
   </td>
   <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
@@ -684,9 +790,6 @@ def generar_html(datos):
       </tr>
     </table>
     <div style="font-size:11px;color:#475569;margin-top:4px;">{nivel(puntaje)}</div>
-  </td>
-  <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;color:#1e293b;">
-    {html.escape(str(r.get("motivos","")))}
   </td>
   <td style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:Arial,sans-serif;">
     <a target="_blank" href="{link}" style="color:#2563eb;font-weight:bold;text-decoration:underline;">Abrir SECOP</a>
@@ -701,8 +804,8 @@ def generar_html(datos):
 
         filas = """
 <tr>
-  <td colspan="6" style="padding:20px;text-align:center;font-family:Arial,sans-serif;">
-    <h3 style="margin:0;color:#1e293b;">No se encontraron oportunidades</h3>
+  <td colspan="8" style="padding:20px;text-align:center;font-family:Arial,sans-serif;">
+    <h3 style="margin:0;color:#1e293b;">No se encontraron oportunidades abiertas</h3>
   </td>
 </tr>
 """
@@ -755,15 +858,12 @@ def generar_html(datos):
 </head>
 <body style="margin:0;padding:0;background-color:#eef2ff;">
 
-<!-- wrapper -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef2ff;">
 <tr>
 <td align="center" style="padding:20px 10px;">
 
-<!-- content, fixed width so Outlook doesn't stretch it -->
-<table role="presentation" width="700" cellpadding="0" cellspacing="0" border="0" style="width:700px;max-width:700px;background-color:#eef2ff;">
+<table role="presentation" width="900" cellpadding="0" cellspacing="0" border="0" style="width:900px;max-width:900px;background-color:#eef2ff;">
 
-<!-- header (solid color instead of gradient, Outlook doesn't render linear-gradient) -->
 <tr>
 <td style="background-color:#1d4ed8;padding:30px 35px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -773,7 +873,7 @@ def generar_html(datos):
           &#128737; Monitor SECOP Seguridad Tecnol&oacute;gica
         </div>
         <div style="font-family:Arial,sans-serif;color:#dbe4ff;font-size:13px;margin-top:8px;">
-          Centros de control | SOC | SIEM | CCTV | Ciberseguridad | Infraestructura TI
+          Procesos abiertos (excluye adjudicados y ofertas ya presentadas) &mdash; SOC | SIEM | CCTV | Ciberseguridad | Infraestructura TI
         </div>
         <div style="font-family:Arial,sans-serif;color:#dbe4ff;font-size:12px;margin-top:6px;">
           Generado: {fecha}
@@ -784,12 +884,11 @@ def generar_html(datos):
 </td>
 </tr>
 
-<!-- cards row (table-based, not flexbox) -->
 <tr>
 <td style="padding:15px 20px;background-color:#eef2ff;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr>
-      {tarjeta(len(datos), "Oportunidades detectadas")}
+      {tarjeta(len(datos), "Oportunidades abiertas")}
       {tarjeta(sum(1 for x in datos if x.get("puntaje",0)>=80), "Alertas cr&iacute;ticas")}
       {tarjeta(sum(1 for x in datos if "cctv" in str(x.get("motivos","")).lower()), "CCTV / Video seguridad")}
       {tarjeta(sum(1 for x in datos if "soc" in str(x.get("motivos","")).lower()), "SOC / SIEM")}
@@ -798,7 +897,6 @@ def generar_html(datos):
 </td>
 </tr>
 
-<!-- table container -->
 <tr>
 <td style="padding:15px 20px 30px 20px;background-color:#eef2ff;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #e2e8f0;">
@@ -806,8 +904,10 @@ def generar_html(datos):
       <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Entidad</th>
       <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Descripci&oacute;n</th>
       <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Valor</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">F. Publicaci&oacute;n</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">F. Pliegos</th>
+      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Estado/Fase</th>
       <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Nivel</th>
-      <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Detectado</th>
       <th align="left" style="background-color:#0f172a;color:#ffffff;padding:12px;font-family:Arial,sans-serif;font-size:13px;">Enlace</th>
     </tr>
     {filas}
@@ -816,12 +916,10 @@ def generar_html(datos):
 </tr>
 
 </table>
-<!-- /content -->
 
 </td>
 </tr>
 </table>
-<!-- /wrapper -->
 
 </body>
 </html>
@@ -1009,9 +1107,18 @@ def main():
     )
 
 
+    log(
+        f"Oportunidades por palabras clave: {len(oportunidades)}"
+    )
+
+
+    oportunidades = filtrar_no_presentados(
+        oportunidades
+    )
+
 
     log(
-        f"Oportunidades: {len(oportunidades)}"
+        f"Oportunidades abiertas (excluye adjudicados/ofertas ya presentadas): {len(oportunidades)}"
     )
 
 
